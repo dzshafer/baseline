@@ -1,0 +1,9 @@
+{
+  "name": "baseline",
+  "version": "2.0.0",
+  "description": "Self-hosted personal health & fitness tracker. Runs on Raspberry Pi.",
+  "main": "server.py",
+  "scripts": {
+    "start": "python3 server.py"
+  }
+}

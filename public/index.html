@@ -1,0 +1,2053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Baseline — Personal Health Tracker</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ── Theme variables ── */
+:root {
+  --accent: #5b8af0;
+  --accent2: #7c6af5;
+  --green: #3ecf8e;
+  --orange: #f5a623;
+  --red: #e55353;
+  --pink: #e879a0;
+  --teal: #2dd4bf;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --bg: #0d0f14;
+  --bg2: #13161e;
+  --bg3: #1a1e28;
+  --bg4: #222738;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --text: #f0f2f8;
+  --text2: #8b90a8;
+  --text3: #555a70;
+}
+body.light {
+  --bg: #f5f6fa; --bg2: #ffffff; --bg3: #eef0f6; --bg4: #e2e5ef;
+  --border: rgba(0,0,0,0.08); --border2: rgba(0,0,0,0.14);
+  --text: #1a1d2e; --text2: #5a6080; --text3: #9298b0;
+  --accent: #3d6ee8; --accent2: #6254d4; --green: #1fa968;
+  --orange: #d4870a; --red: #c83535; --pink: #c4547e; --teal: #0fa892;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+h1,h2,h3,h4 { font-family: 'Syne', sans-serif; }
+
+/* ── Profile picker screen ── */
+#picker-screen {
+  min-height: 100vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; padding: 32px 16px;
+}
+.picker-logo {
+  font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800;
+  letter-spacing: -1px; margin-bottom: 8px;
+}
+.picker-logo span { color: var(--accent); }
+.picker-subtitle { font-size: 14px; color: var(--text2); margin-bottom: 48px; }
+.profiles-grid {
+  display: flex; flex-wrap: wrap; gap: 20px;
+  justify-content: center; max-width: 600px;
+}
+.profile-card {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 10px; cursor: pointer; padding: 20px 16px;
+  border-radius: var(--radius); border: 1px solid var(--border);
+  background: var(--bg2); width: 130px;
+  transition: all 0.15s;
+}
+.profile-card:hover { border-color: var(--border2); transform: translateY(-3px); }
+.profile-avatar {
+  width: 72px; height: 72px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 700;
+  color: white; flex-shrink: 0;
+}
+.profile-name { font-size: 14px; font-weight: 600; text-align: center; }
+.profile-goal { font-size: 11px; color: var(--text2); text-align: center; }
+.profile-pin-badge {
+  font-size: 10px; color: var(--text3);
+  display: flex; align-items: center; gap: 3px;
+}
+.add-profile-card {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  cursor: pointer; padding: 20px 16px; border-radius: var(--radius);
+  border: 1px dashed var(--border2); width: 130px;
+  color: var(--text2); transition: all 0.15s;
+}
+.add-profile-card:hover { border-color: var(--accent); color: var(--accent); }
+.add-avatar {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: var(--bg3); display: flex; align-items: center;
+  justify-content: center; font-size: 28px;
+}
+.picker-theme {
+  margin-top: 40px; font-size: 13px; color: var(--text3);
+  cursor: pointer; display: flex; align-items: center; gap: 6px;
+}
+.picker-theme:hover { color: var(--text2); }
+
+/* ── PIN screen ── */
+#pin-screen {
+  min-height: 100vh; display: none; flex-direction: column;
+  align-items: center; justify-content: center; padding: 32px;
+}
+.pin-avatar {
+  width: 80px; height: 80px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 700;
+  color: white; margin-bottom: 16px;
+}
+.pin-name { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+.pin-subtitle { font-size: 14px; color: var(--text2); margin-bottom: 28px; }
+.pin-dots { display: flex; gap: 12px; margin-bottom: 28px; }
+.pin-dot {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid var(--border2); transition: all 0.15s;
+}
+.pin-dot.filled { background: var(--accent); border-color: var(--accent); }
+.pin-pad {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 10px; width: 240px;
+}
+.pin-btn {
+  height: 60px; border-radius: var(--radius-sm);
+  background: var(--bg3); border: 1px solid var(--border);
+  font-size: 20px; font-weight: 600; cursor: pointer;
+  color: var(--text); transition: all 0.1s;
+  display: flex; align-items: center; justify-content: center;
+}
+.pin-btn:hover { background: var(--bg4); }
+.pin-btn:active { transform: scale(0.95); }
+.pin-error { color: var(--red); font-size: 13px; margin-top: 12px; min-height: 20px; }
+.pin-back { margin-top: 20px; font-size: 13px; color: var(--text2); cursor: pointer; }
+.pin-back:hover { color: var(--text); }
+
+/* ── Main app shell ── */
+#app-screen { display: none; }
+.shell { display: flex; min-height: 100vh; }
+
+/* Sidebar */
+.sidebar {
+  width: 240px; flex-shrink: 0; background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+}
+.logo {
+  padding: 22px 20px 18px;
+  font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800;
+  letter-spacing: -0.5px; border-bottom: 1px solid var(--border);
+}
+.logo span { color: var(--accent); }
+.nav { padding: 12px 10px; flex: 1; }
+.nav-section {
+  font-size: 10px; font-weight: 600; letter-spacing: 1.2px;
+  color: var(--text3); padding: 14px 12px 6px; text-transform: uppercase;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  cursor: pointer; font-size: 14px; color: var(--text2);
+  transition: all 0.15s; margin-bottom: 2px; font-weight: 500;
+}
+.nav-item:hover { background: var(--bg3); color: var(--text); }
+.nav-item.active { background: linear-gradient(135deg,rgba(91,138,240,0.15),rgba(124,106,245,0.1)); color: var(--accent); }
+.nav-icon { font-size: 16px; width: 20px; text-align: center; }
+.sidebar-footer { padding: 12px; border-top: 1px solid var(--border); }
+.user-badge {
+  background: var(--bg3); border-radius: var(--radius-sm);
+  padding: 10px 12px; display: flex; align-items: center; gap: 10px;
+  cursor: pointer; margin-bottom: 8px;
+}
+.user-badge:hover { background: var(--bg4); }
+.sb-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; color: white; flex-shrink: 0;
+}
+.switch-btn {
+  width: 100%; padding: 8px; border-radius: var(--radius-sm);
+  background: transparent; border: 1px solid var(--border2);
+  color: var(--text2); font-size: 12px; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; transition: all 0.15s;
+  margin-bottom: 8px;
+}
+.switch-btn:hover { background: var(--bg3); color: var(--text); }
+.theme-toggle {
+  display: flex; align-items: center; gap: 8px; padding: 8px 4px;
+  cursor: pointer; font-size: 12px; color: var(--text3);
+  transition: all 0.15s; user-select: none;
+}
+.theme-toggle:hover { color: var(--text2); }
+.toggle-track {
+  width: 30px; height: 16px; border-radius: 8px;
+  background: var(--bg4); border: 1px solid var(--border2);
+  position: relative; transition: background 0.2s; flex-shrink: 0;
+}
+.toggle-thumb {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--text2); position: absolute;
+  top: 2px; left: 2px; transition: all 0.2s;
+}
+body.light .toggle-track { background: var(--accent); }
+body.light .toggle-thumb { left: 16px; background: white; }
+
+/* Mobile */
+.mobile-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5); z-index: 150;
+}
+.mobile-overlay.open { display: block; }
+.mobile-header {
+  display: none; position: sticky; top: 0; z-index: 200;
+  background: var(--bg2); border-bottom: 1px solid var(--border);
+  padding: 12px 16px; align-items: center; justify-content: space-between;
+}
+.hamburger {
+  width: 36px; height: 36px; border-radius: var(--radius-sm);
+  background: var(--bg3); border: 1px solid var(--border2);
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 5px; cursor: pointer;
+}
+.hamburger span { display: block; width: 16px; height: 2px; background: var(--text); border-radius: 2px; }
+
+/* Main content */
+.main { flex: 1; overflow-x: hidden; }
+.content { padding: 32px; max-width: 1100px; }
+.page { display: none; }
+.page.active { display: block; }
+.page-header { margin-bottom: 28px; }
+.page-header h2 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+.page-header p { color: var(--text2); font-size: 14px; margin-top: 4px; }
+
+/* Cards */
+.card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+.card-title {
+  font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600;
+  letter-spacing: 0.5px; text-transform: uppercase; color: var(--text2); margin-bottom: 16px;
+}
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.grid4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
+.mt16 { margin-top: 16px; } .mt24 { margin-top: 24px; }
+.mb8 { margin-bottom: 8px; } .mb16 { margin-bottom: 16px; }
+
+/* Stat tiles */
+.stat-tile { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+.stat-tile .label { font-size: 12px; color: var(--text2); margin-bottom: 6px; font-weight: 500; }
+.stat-tile .value { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 700; }
+.stat-tile .sub { font-size: 12px; color: var(--text2); margin-top: 4px; }
+
+/* Forms */
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 13px; font-weight: 500; color: var(--text2); margin-bottom: 6px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+input[type=text],input[type=number],input[type=date],input[type=password],select,textarea {
+  width: 100%; background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: var(--radius-sm); color: var(--text); padding: 10px 12px;
+  font-family: 'DM Sans',sans-serif; font-size: 14px; outline: none; transition: border-color 0.15s;
+}
+input:focus,select:focus,textarea:focus { border-color: var(--accent); }
+select option { background: var(--bg3); }
+.btn { padding: 10px 20px; border-radius: var(--radius-sm); font-family: 'DM Sans',sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; }
+.btn-primary { background: linear-gradient(135deg,var(--accent),var(--accent2)); color: white; }
+.btn-primary:hover { opacity: 0.85; transform: translateY(-1px); }
+.btn-outline { background: transparent; border: 1px solid var(--border2); color: var(--text); }
+.btn-outline:hover { background: var(--bg3); }
+.btn-danger { background: transparent; border: 1px solid rgba(229,83,83,0.3); color: var(--red); }
+.btn-danger:hover { background: rgba(229,83,83,0.1); }
+.btn-sm { padding: 7px 14px; font-size: 13px; }
+
+/* Progress */
+.progress-bar { background: var(--bg4); border-radius: 100px; height: 8px; overflow: hidden; margin-top: 8px; }
+.progress-fill { height: 100%; border-radius: 100px; transition: width 0.6s ease; }
+.pf-blue { background: linear-gradient(90deg,var(--accent),var(--accent2)); }
+.pf-green { background: linear-gradient(90deg,var(--teal),var(--green)); }
+.pf-orange { background: var(--orange); }
+
+/* Tags */
+.tag { display: inline-block; padding: 3px 10px; border-radius: 100px; font-size: 11px; font-weight: 500; }
+.tag-blue { background: rgba(91,138,240,0.15); color: var(--accent); }
+.tag-green { background: rgba(62,207,142,0.15); color: var(--green); }
+.tag-orange { background: rgba(245,166,35,0.15); color: var(--orange); }
+.tag-pink { background: rgba(232,121,160,0.15); color: var(--pink); }
+.tag-teal { background: rgba(45,212,191,0.15); color: var(--teal); }
+
+/* BMI */
+.bmi-result { border-radius: var(--radius); padding: 20px; text-align: center; margin-top: 20px; border: 1px solid var(--border); }
+.bmi-number { font-family: 'Syne',sans-serif; font-size: 52px; font-weight: 800; }
+.bmi-band { display: inline-block; padding: 4px 16px; border-radius: 100px; font-size: 13px; font-weight: 500; margin-top: 8px; }
+.bmi-scale { display: flex; gap: 4px; margin-top: 16px; border-radius: var(--radius-sm); overflow: hidden; }
+.bmi-scale-seg { flex: 1; height: 8px; }
+
+/* Sleep */
+.sleep-block { background: linear-gradient(135deg,rgba(91,138,240,0.1),rgba(124,106,245,0.1)); border: 1px solid rgba(91,138,240,0.2); border-radius: var(--radius); padding: 20px; text-align: center; }
+.sleep-time { font-family: 'Syne',sans-serif; font-size: 36px; font-weight: 700; color: var(--accent); }
+
+/* Workout cards */
+.workout-card { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; cursor: pointer; transition: all 0.15s; }
+.workout-card:hover { border-color: var(--border2); transform: translateY(-1px); }
+.workout-card.done { border-color: rgba(62,207,142,0.3); background: rgba(62,207,142,0.05); }
+.workout-header { display: flex; justify-content: space-between; align-items: center; }
+.workout-title { font-weight: 600; font-size: 15px; }
+.workout-meta { font-size: 12px; color: var(--text2); margin-top: 4px; }
+.exercise-list { margin-top: 12px; display: none; }
+.workout-card.open .exercise-list { display: block; }
+.exercise-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.exercise-row:last-child { border-bottom: none; }
+
+/* Meal */
+.meal-slot { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+.meal-time { font-size: 12px; color: var(--accent); font-weight: 600; margin-bottom: 4px; }
+.meal-name { font-weight: 600; font-size: 15px; }
+.meal-macros { display: flex; gap: 12px; margin-top: 8px; }
+.macro { font-size: 12px; color: var(--text2); }
+.macro span { color: var(--text); font-weight: 500; }
+
+/* Log */
+.log-entry { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+.log-entry:last-child { border-bottom: none; }
+.log-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+/* Calendar */
+.cal-strip { display: flex; gap: 6px; margin-bottom: 24px; overflow-x: auto; padding-bottom: 4px; }
+.cal-day { min-width: 44px; padding: 8px 6px; border-radius: var(--radius-sm); text-align: center; cursor: pointer; background: var(--bg3); border: 1px solid var(--border); transition: all 0.15s; flex-shrink: 0; }
+.cal-day:hover { border-color: var(--accent); }
+.cal-day.today { background: linear-gradient(135deg,rgba(91,138,240,0.2),rgba(124,106,245,0.15)); border-color: var(--accent); }
+.cal-day.has-data { border-color: var(--green); }
+.cal-day .day-name { font-size: 10px; color: var(--text2); }
+.cal-day .day-num { font-size: 16px; font-weight: 700; margin-top: 2px; }
+.cal-day .day-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); margin: 4px auto 0; }
+
+/* Charts */
+.chart-wrap { position: relative; height: 180px; margin-top: 12px; }
+canvas { width: 100% !important; }
+
+/* Toast */
+.toast { position: fixed; bottom: 24px; right: 24px; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 12px 18px; font-size: 14px; font-weight: 500; transform: translateY(80px); opacity: 0; transition: all 0.3s; z-index: 9999; }
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.success { border-color: rgba(62,207,142,0.4); color: var(--green); }
+
+/* Modal */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 500; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--radius); padding: 28px; width: 480px; max-width: 95vw; max-height: 85vh; overflow-y: auto; }
+.modal h3 { font-size: 18px; margin-bottom: 20px; }
+
+/* Color picker */
+.color-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.color-swatch { width: 32px; height: 32px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: all 0.15s; }
+.color-swatch.selected { border-color: white; transform: scale(1.15); }
+
+/* Misc */
+.divider { height: 1px; background: var(--border); margin: 20px 0; }
+.section-title { font-family: 'Syne',sans-serif; font-size: 16px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.flex-between { display: flex; justify-content: space-between; align-items: center; }
+.flex-center { display: flex; align-items: center; gap: 8px; }
+.text-sm { font-size: 13px; color: var(--text2); }
+.text-green { color: var(--green); }
+.text-accent { color: var(--accent); }
+.fw-600 { font-weight: 600; }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+
+/* Map styles */
+.map-container { height: 380px; border-radius: var(--radius); overflow: hidden; margin-top: 12px; border: 1px solid var(--border); }
+.leaflet-container { background: #0d0f14; }
+.workout-route-card { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; cursor: pointer; transition: all 0.15s; }
+.workout-route-card:hover { border-color: var(--border2); transform: translateY(-1px); }
+.workout-route-card.selected { border-color: var(--accent); background: rgba(91,138,240,0.05); }
+.route-stat { text-align: center; }
+.route-stat .rs-val { font-family: 'Syne',sans-serif; font-size: 20px; font-weight: 700; }
+.route-stat .rs-label { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.route-stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-top: 12px; }
+.upload-gpx-zone { border: 2px dashed var(--border2); border-radius: var(--radius); padding: 24px; text-align: center; cursor: pointer; transition: all 0.15s; }
+.upload-gpx-zone:hover { border-color: var(--accent); background: rgba(91,138,240,0.05); }
+.sync-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
+.sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sidebar { position: fixed; top: 0; left: 0; height: 100vh; z-index: 160; transform: translateX(-100%); transition: transform 0.25s ease; }
+  .sidebar.mobile-open { transform: translateX(0); }
+  .mobile-header { display: flex; }
+  .main { width: 100%; }
+  .content { padding: 16px; }
+  .grid2,.grid3,.grid4 { grid-template-columns: 1fr; }
+  .form-row { grid-template-columns: 1fr; }
+  .stat-tile .value { font-size: 22px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===================== PROFILE PICKER ===================== -->
+<div id="picker-screen">
+  <div class="picker-logo">Base<span>line</span></div>
+  <div class="picker-subtitle">Who's tracking today?</div>
+  <div class="profiles-grid" id="profiles-grid"></div>
+  <div class="picker-theme" onclick="toggleTheme()">
+    <div class="toggle-track"><div class="toggle-thumb"></div></div>
+    <span id="picker-theme-label">Light mode</span>
+  </div>
+</div>
+
+<!-- ===================== PIN SCREEN ===================== -->
+<div id="pin-screen">
+  <div class="pin-avatar" id="pin-avatar"></div>
+  <div class="pin-name" id="pin-name"></div>
+  <div class="pin-subtitle">Enter your PIN</div>
+  <div class="pin-dots">
+    <div class="pin-dot" id="pd0"></div>
+    <div class="pin-dot" id="pd1"></div>
+    <div class="pin-dot" id="pd2"></div>
+    <div class="pin-dot" id="pd3"></div>
+  </div>
+  <div class="pin-pad">
+    <div class="pin-btn" onclick="pinPress('1')">1</div>
+    <div class="pin-btn" onclick="pinPress('2')">2</div>
+    <div class="pin-btn" onclick="pinPress('3')">3</div>
+    <div class="pin-btn" onclick="pinPress('4')">4</div>
+    <div class="pin-btn" onclick="pinPress('5')">5</div>
+    <div class="pin-btn" onclick="pinPress('6')">6</div>
+    <div class="pin-btn" onclick="pinPress('7')">7</div>
+    <div class="pin-btn" onclick="pinPress('8')">8</div>
+    <div class="pin-btn" onclick="pinPress('9')">9</div>
+    <div class="pin-btn" style="opacity:0.3" onclick="pinClear()">⌫</div>
+    <div class="pin-btn" onclick="pinPress('0')">0</div>
+    <div class="pin-btn" style="opacity:0.3" onclick="pinBackspace()">←</div>
+  </div>
+  <div class="pin-error" id="pin-error"></div>
+  <div class="pin-back" onclick="showPicker()">← Back</div>
+</div>
+
+<!-- ===================== MAIN APP ===================== -->
+<div id="app-screen">
+  <div class="mobile-overlay" id="mobile-overlay" onclick="closeMobileNav()"></div>
+  <div class="shell">
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+      <div class="logo">Base<span>line</span></div>
+      <div class="nav">
+        <div class="nav-section">Overview</div>
+        <div class="nav-item active" onclick="showPage('dashboard')"><span class="nav-icon">⊞</span> Dashboard</div>
+        <div class="nav-item" onclick="showPage('profile')"><span class="nav-icon">◎</span> Profile & Goals</div>
+        <div class="nav-section">Health</div>
+        <div class="nav-item" onclick="showPage('bmi')"><span class="nav-icon">◈</span> BMI Calculator</div>
+        <div class="nav-item" onclick="showPage('sleep')"><span class="nav-icon">◑</span> Sleep Schedule</div>
+        <div class="nav-section">Fitness</div>
+        <div class="nav-item" onclick="showPage('workouts')"><span class="nav-icon">⟁</span> Workouts</div>
+        <div class="nav-item" onclick="showPage('routes')"><span class="nav-icon">◉</span> Workout Routes</div>
+        <div class="nav-item" onclick="showPage('meals')"><span class="nav-icon">◻</span> Meals & Nutrition</div>
+        <div class="nav-section">Tracking</div>
+        <div class="nav-item" onclick="showPage('daily')"><span class="nav-icon">✦</span> Daily Log</div>
+        <div class="nav-item" onclick="showPage('history')"><span class="nav-icon">◌</span> History</div>
+      </div>
+      <div class="sidebar-footer">
+        <div class="user-badge" onclick="showPage('profile')">
+          <div class="sb-avatar" id="sb-avatar"></div>
+          <div>
+            <div style="font-size:13px;font-weight:600" id="sb-name">—</div>
+            <div style="font-size:11px;color:var(--text2)" id="sb-goal">—</div>
+          </div>
+        </div>
+        <button class="switch-btn" onclick="showPicker()">⇄ Switch Profile</button>
+        <div class="theme-toggle" onclick="toggleTheme()">
+          <div class="toggle-track"><div class="toggle-thumb"></div></div>
+          <span id="theme-label">Light mode</span>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main -->
+    <main class="main">
+      <div class="mobile-header">
+        <div class="logo" style="border:none;padding:0;font-size:18px">Base<span>line</span></div>
+        <div class="hamburger" onclick="openMobileNav()">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+      <div class="content">
+
+        <!-- DASHBOARD -->
+        <div class="page active" id="page-dashboard">
+          <div class="page-header">
+            <div class="flex-between">
+              <div>
+                <h2 id="dash-greeting">Welcome back</h2>
+                <p id="dash-date"></p>
+              </div>
+              <div class="sync-badge" id="sync-badge" style="display:none">
+                <div class="sync-dot"></div>
+                <span id="sync-time">Synced just now</span>
+              </div>
+            </div>
+          </div>
+          <div class="grid4 mb16">
+            <div class="stat-tile"><div class="label">Steps today</div><div class="value" id="d-steps">—</div><div class="sub">Goal: 10,000</div></div>
+            <div class="stat-tile"><div class="label">Calories in</div><div class="value" id="d-cals">—</div><div class="sub" id="d-cal-goal">Goal: —</div></div>
+            <div class="stat-tile"><div class="label">Water (oz)</div><div class="value" id="d-water">—</div><div class="sub">Goal: 64 oz</div></div>
+            <div class="stat-tile"><div class="label">Sleep last night</div><div class="value" id="d-sleep">—</div><div class="sub">hrs</div></div>
+          </div>
+          <div class="cal-strip" id="cal-strip"></div>
+          <div class="grid2">
+            <div class="card"><div class="card-title">Goal Progress</div><div id="goals-progress-list"><p class="text-sm">Set goals in Profile & Goals</p></div></div>
+            <div class="card"><div class="card-title">Weight Trend</div><div class="chart-wrap"><canvas id="weight-chart"></canvas></div></div>
+          </div>
+          <div class="grid2 mt16">
+            <div class="card"><div class="card-title">Today's Workout</div><div id="dash-workout-preview"><p class="text-sm">Set your goal in Profile to get a workout plan</p></div></div>
+            <div class="card"><div class="card-title">Next Meal</div><div id="dash-meal-preview"><p class="text-sm">Set your calorie goal in Profile to see meal suggestions</p></div></div>
+          </div>
+        </div>
+
+        <!-- PROFILE -->
+        <div class="page" id="page-profile">
+          <div class="page-header"><h2>Profile & Goals</h2><p>Your info powers all recommendations across the app</p></div>
+          <div class="grid2">
+            <div class="card">
+              <div class="card-title">Personal Information</div>
+              <div class="form-group"><label>Full Name</label><input type="text" id="p-name" placeholder="Your name"></div>
+              <div class="form-row">
+                <div class="form-group"><label>Age</label><input type="number" id="p-age" placeholder="30" min="10" max="100"></div>
+                <div class="form-group"><label>Biological Sex</label><select id="p-sex"><option value="">Select</option><option value="male">Male</option><option value="female">Female</option></select></div>
+              </div>
+              <div class="form-row">
+                <div class="form-group"><label>Height (inches)</label><input type="number" id="p-height" placeholder="70"></div>
+                <div class="form-group"><label>Weight (lbs)</label><input type="number" id="p-weight" placeholder="170"></div>
+              </div>
+              <div class="form-group"><label>Activity Level</label>
+                <select id="p-activity">
+                  <option value="sedentary">Sedentary (desk job, little exercise)</option>
+                  <option value="light">Lightly active (1–3 days/week)</option>
+                  <option value="moderate">Moderately active (3–5 days/week)</option>
+                  <option value="active">Active (6–7 days/week)</option>
+                  <option value="very_active">Very active (2x/day or physical job)</option>
+                </select>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-title">Your Goals</div>
+              <div class="form-group"><label>Primary Fitness Goal</label>
+                <select id="p-goal">
+                  <option value="">Select a goal</option>
+                  <option value="lose_weight">Lose Weight</option>
+                  <option value="gain_muscle">Build Muscle / Gain Strength</option>
+                  <option value="maintain">Maintain Weight & Stay Fit</option>
+                  <option value="improve_cardio">Improve Cardiovascular Health</option>
+                  <option value="flexibility">Improve Flexibility & Mobility</option>
+                  <option value="athletic">Athletic Performance</option>
+                </select>
+              </div>
+              <div class="form-row">
+                <div class="form-group"><label>Target Weight (lbs)</label><input type="number" id="p-target-weight" placeholder="155"></div>
+                <div class="form-group"><label>Target Date</label><input type="date" id="p-target-date"></div>
+              </div>
+              <div class="form-group"><label>Daily Calorie Goal (blank = auto)</label><input type="number" id="p-cal-goal" placeholder="Auto-calculated"></div>
+              <div class="form-row">
+                <div class="form-group"><label>Days/Week for Exercise</label>
+                  <select id="p-days"><option value="3">3 days</option><option value="4">4 days</option><option value="5" selected>5 days</option><option value="6">6 days</option></select>
+                </div>
+                <div class="form-group"><label>Workout Location</label>
+                  <select id="p-location"><option value="both">Home & gym</option><option value="gym">Gym (EOS/standard)</option><option value="home">Home only</option></select>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:20px;display:flex;align-items:center;gap:12px">
+            <button class="btn btn-primary" onclick="saveProfile()">Save Profile & Recalculate</button>
+            <span id="profile-saved-msg" style="font-size:13px;color:var(--green);display:none">✓ Saved!</span>
+          </div>
+          <div class="card mt24" id="calc-stats" style="display:none">
+            <div class="card-title">Calculated Stats</div>
+            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px">
+              <div class="stat-tile"><div class="label">BMI</div><div class="value" id="cs-bmi">—</div><div class="sub" id="cs-bmi-cat">—</div></div>
+              <div class="stat-tile"><div class="label">BMR</div><div class="value" id="cs-bmr">—</div><div class="sub">cal/day at rest</div></div>
+              <div class="stat-tile"><div class="label">TDEE</div><div class="value" id="cs-tdee">—</div><div class="sub">maintenance</div></div>
+              <div class="stat-tile"><div class="label">Calorie Target</div><div class="value text-accent" id="cs-target">—</div><div class="sub">to reach goal</div></div>
+              <div class="stat-tile" style="border-color:rgba(62,207,142,0.25)"><div class="label">Protein Target</div><div class="value text-green" id="cs-protein">—</div><div class="sub" id="cs-protein-sub">g/day</div></div>
+            </div>
+            <div id="cs-protein-advice" style="margin-top:14px;font-size:13px;color:var(--text2);line-height:1.7;padding:12px;background:var(--bg3);border-radius:var(--radius-sm)"></div>
+          </div>
+          <div class="card mt16">
+            <div class="card-title">Profile Security</div>
+            <div class="form-row">
+              <div class="form-group"><label>Set / Change PIN (4 digits, optional)</label><input type="password" id="p-pin" placeholder="Leave blank to remove PIN" maxlength="4"></div>
+              <div style="display:flex;align-items:flex-end;padding-bottom:16px"><button class="btn btn-outline btn-sm" onclick="savePin()">Save PIN</button></div>
+            </div>
+            <div class="divider"></div>
+            <button class="btn btn-danger btn-sm" onclick="confirmDeleteProfile()">Delete This Profile</button>
+          </div>
+        </div>
+
+        <!-- BMI -->
+        <div class="page" id="page-bmi">
+          <div class="page-header"><h2>BMI Calculator</h2><p>Auto-filled from your profile — update anytime</p></div>
+          <div class="grid2">
+            <div class="card">
+              <div class="card-title">Calculate BMI</div>
+              <div class="form-row">
+                <div class="form-group"><label>Weight (lbs)</label><input type="number" id="bmi-weight" placeholder="170"></div>
+                <div class="form-group"><label>Height (inches)</label><input type="number" id="bmi-height" placeholder="70"></div>
+              </div>
+              <div class="form-row">
+                <div class="form-group"><label>Age</label><input type="number" id="bmi-age" placeholder="30"></div>
+                <div class="form-group"><label>Sex</label><select id="bmi-sex"><option value="male">Male</option><option value="female">Female</option></select></div>
+              </div>
+              <button class="btn btn-primary" onclick="calcBMI()">Calculate</button>
+              <div class="bmi-result" id="bmi-result" style="display:none">
+                <div class="bmi-number" id="bmi-val">—</div>
+                <div><span class="bmi-band" id="bmi-band">—</span></div>
+                <div class="bmi-scale mt16">
+                  <div class="bmi-scale-seg" style="background:#5b8af0"></div>
+                  <div class="bmi-scale-seg" style="background:#3ecf8e"></div>
+                  <div class="bmi-scale-seg" style="background:#f5a623"></div>
+                  <div class="bmi-scale-seg" style="background:#e55353"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-top:4px"><span>Under</span><span>Normal</span><span>Over</span><span>Obese</span></div>
+                <div id="bmi-marker" style="position:relative;height:4px;margin-top:4px">
+                  <div id="bmi-pointer" style="position:absolute;top:-6px;width:12px;height:12px;background:white;border-radius:50%;transform:translateX(-50%);transition:left 0.5s"></div>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-title">What Your BMI Means</div>
+              <div id="bmi-advice" style="font-size:14px;color:var(--text2);line-height:1.7"><p>Results will appear here after calculating.</p></div>
+              <div class="divider"></div>
+              <div class="card-title">BMI Ranges</div>
+              <div style="font-size:13px">
+                <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>Below 18.5</span><span style="color:var(--accent)">Underweight</span></div>
+                <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>18.5 – 24.9</span><span style="color:var(--green)">Normal weight</span></div>
+                <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>25.0 – 29.9</span><span style="color:var(--orange)">Overweight</span></div>
+                <div style="display:flex;justify-content:space-between;padding:6px 0"><span>30.0 and above</span><span style="color:var(--red)">Obese</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SLEEP -->
+        <div class="page" id="page-sleep">
+          <div class="page-header"><h2>Sleep Schedule</h2><p>Auto-filled from your profile</p></div>
+          <div class="grid2">
+            <div class="card">
+              <div class="card-title">Your Sleep Parameters</div>
+              <div class="form-group"><label>Age</label><input type="number" id="sl-age" placeholder="30"></div>
+              <div class="form-group"><label>Wake-up time</label><input type="text" id="sl-wake" placeholder="6:30 AM"></div>
+              <div class="form-group"><label>Current BMI (auto-filled)</label><input type="number" id="sl-bmi" placeholder="e.g. 24.5"></div>
+              <div class="form-group"><label>Stress / lifestyle level</label>
+                <select id="sl-stress"><option value="low">Low — relaxed</option><option value="moderate" selected>Moderate — normal work stress</option><option value="high">High — busy, demanding</option></select>
+              </div>
+              <button class="btn btn-primary" onclick="calcSleep()">Get Sleep Plan</button>
+            </div>
+            <div class="card" id="sleep-output"><div class="card-title">Sleep Recommendation</div><p class="text-sm">Fill in your info and click Get Sleep Plan</p></div>
+          </div>
+          <div class="card mt16">
+            <div class="card-title">Sleep Hygiene Tips</div>
+            <div class="grid3" style="gap:12px">
+              <div class="stat-tile"><div class="label">⏰ Consistency</div><div style="font-size:13px;margin-top:6px;color:var(--text2);line-height:1.6">Same bed and wake time every day, even weekends.</div></div>
+              <div class="stat-tile"><div class="label">📵 Screen-free wind down</div><div style="font-size:13px;margin-top:6px;color:var(--text2);line-height:1.6">Stop screens 60 min before bed. Blue light suppresses melatonin.</div></div>
+              <div class="stat-tile"><div class="label">🌡 Cool room</div><div style="font-size:13px;margin-top:6px;color:var(--text2);line-height:1.6">Ideal sleep temp is 65–68°F. Core temp must drop to initiate sleep.</div></div>
+              <div class="stat-tile"><div class="label">☕ Caffeine cutoff</div><div style="font-size:13px;margin-top:6px;color:var(--text2);line-height:1.6">Stop caffeine 6–8 hours before bed. Half-life is ~5 hours.</div></div>
+              <div class="stat-tile"><div class="label">🌙 Dark environment</div><div style="font-size:13px;margin-top:6px;color:var(--text2);line-height:1.6">Blackout curtains or a sleep mask. Even dim light disrupts quality.</div></div>
+              <div class="stat-tile"><div class="label">🧘 Wind-down ritual</div><div style="font-size:13px;margin-top:6px;color:var(--text2);line-height:1.6">Light stretching or reading 30 min before bed signals your brain to slow down.</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- WORKOUTS -->
+        <div class="page" id="page-workouts">
+          <div class="page-header">
+            <div class="flex-between">
+              <div><h2>Workout Plan</h2><p>Based on your goal. Works at home or at the gym.</p></div>
+              <button class="btn btn-outline btn-sm" onclick="showPage('profile')">Edit Goal ↗</button>
+            </div>
+          </div>
+          <div id="workout-plan-container"><div class="card"><p class="text-sm">Set your fitness goal in Profile & Goals to generate a workout plan.</p></div></div>
+        </div>
+
+        <!-- MEALS -->
+        <div class="page" id="page-meals">
+          <div class="page-header">
+            <div class="flex-between">
+              <div><h2>Meals & Nutrition</h2><p>Meal timing, suggestions, and calorie tracking</p></div>
+              <div style="text-align:right"><div style="font-size:11px;color:var(--text2)">Daily target</div><div style="font-size:18px;font-weight:700;color:var(--accent)" id="meal-cal-target">—</div></div>
+            </div>
+          </div>
+          <div id="meal-plan-container"><div class="card"><p class="text-sm">Set your calorie goal in Profile & Goals to see meal suggestions.</p></div></div>
+          <div class="card mt24">
+            <div class="card-title flex-between">Calorie Tracker — Today<button class="btn btn-outline btn-sm" onclick="openAddFood()">+ Add Food</button></div>
+            <div id="food-log-list"><p class="text-sm">No food logged today</p></div>
+            <div class="divider"></div>
+            <div class="flex-between" style="font-size:14px"><span style="color:var(--text2)">Total logged calories</span><span style="font-weight:700" id="total-cals-today">0 kcal</span></div>
+          </div>
+        </div>
+
+        <!-- DAILY LOG -->
+        <div class="page" id="page-daily">
+          <div class="page-header"><h2>Daily Log</h2><p>Enter your stats manually or paste from a health app export</p></div>
+          <div class="grid2">
+            <div class="card">
+              <div class="card-title">Today's Metrics</div>
+              <div class="form-row">
+                <div class="form-group"><label>Date</label><input type="date" id="log-date"></div>
+                <div class="form-group"><label>Weight (lbs)</label><input type="number" id="log-weight" placeholder="170.5"></div>
+              </div>
+              <div class="form-row">
+                <div class="form-group"><label>Steps</label><input type="number" id="log-steps" placeholder="8500"></div>
+                <div class="form-group"><label>Active Calories Burned</label><input type="number" id="log-cal-burned" placeholder="420"></div>
+              </div>
+              <div class="form-row">
+                <div class="form-group"><label>Sleep (hours)</label><input type="number" id="log-sleep" placeholder="7.5" step="0.5"></div>
+                <div class="form-group"><label>Water (oz)</label><input type="number" id="log-water" placeholder="64"></div>
+              </div>
+              <div class="form-row">
+                <div class="form-group"><label>Resting Heart Rate</label><input type="number" id="log-hr" placeholder="62"></div>
+                <div class="form-group"><label>Mood (1–10)</label><input type="number" id="log-mood" placeholder="7" min="1" max="10"></div>
+              </div>
+              <div class="form-group"><label>Notes</label><textarea id="log-notes" placeholder="How did you feel today?" style="height:80px;resize:none"></textarea></div>
+              <button class="btn btn-primary" onclick="saveLog()">Save Today's Log</button>
+            </div>
+            <div class="card">
+              <div class="card-title">Workout Logged Today?</div>
+              <div class="form-group"><label>Workout completed</label>
+                <select id="log-workout">
+                  <option value="">— None —</option>
+                  <option value="upper">Upper Body</option><option value="lower">Lower Body</option>
+                  <option value="full">Full Body</option><option value="cardio">Cardio / HIIT</option>
+                  <option value="core">Core & Mobility</option><option value="push">Push Day</option>
+                  <option value="pull">Pull Day</option><option value="legs">Leg Day</option>
+                  <option value="rest">Rest / Active Recovery</option>
+                </select>
+              </div>
+              <div class="form-row">
+                <div class="form-group"><label>Duration (min)</label><input type="number" id="log-workout-dur" placeholder="45"></div>
+                <div class="form-group"><label>Intensity (1–10)</label><input type="number" id="log-intensity" placeholder="7" min="1" max="10"></div>
+              </div>
+              <div class="divider"></div>
+              <div class="card-title">Health App Import</div>
+              <p class="text-sm mb16">Paste CSV or JSON export from Apple Health, Fitbit, Garmin, etc.</p>
+              <textarea id="import-data" placeholder='Paste data here...' style="height:90px;resize:none;font-size:12px;font-family:monospace"></textarea>
+              <button class="btn btn-outline btn-sm mt16" onclick="parseImport()">Parse & Auto-Fill</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- WORKOUT ROUTES -->
+        <div class="page" id="page-routes">
+          <div class="page-header">
+            <div class="flex-between">
+              <div><h2>Workout Routes</h2><p>Your GPS-tracked workouts on terrain maps</p></div>
+              <div>
+                <label class="btn btn-outline btn-sm" style="cursor:pointer" for="gpx-upload-input">+ Upload GPX</label>
+                <input type="file" id="gpx-upload-input" accept=".gpx" style="display:none" onchange="uploadGPX(this)">
+              </div>
+            </div>
+          </div>
+          <div class="grid2">
+            <!-- Left: workout list -->
+            <div>
+              <div class="card mb16">
+                <div class="card-title">Recent Workouts</div>
+                <div id="route-workout-list"><p class="text-sm">No workouts yet. Upload a GPX file or connect Health Auto Export.</p></div>
+              </div>
+              <div class="card">
+                <div class="card-title">Upload GPX File</div>
+                <p class="text-sm mb16">Export a GPX from any fitness app (Strava, Apple Health, Garmin Connect, etc.) and upload it here.</p>
+                <div class="upload-gpx-zone" onclick="document.getElementById('gpx-upload-input').click()">
+                  <div style="font-size:28px;margin-bottom:8px">🗺️</div>
+                  <div style="font-weight:600;margin-bottom:4px">Drop GPX file here</div>
+                  <div class="text-sm">or click to browse</div>
+                </div>
+                <div class="form-group mt16">
+                  <label>Workout type (for uploaded GPX)</label>
+                  <select id="gpx-workout-type">
+                    <option value="Run">Run</option>
+                    <option value="Walk">Walk</option>
+                    <option value="Hike">Hike</option>
+                    <option value="Cycling">Cycling</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <!-- Right: map -->
+            <div>
+              <div class="card">
+                <div class="card-title" id="map-workout-title">Select a workout to view route</div>
+                <div id="route-stats-row" style="display:none" class="route-stats-row mb16">
+                  <div class="route-stat stat-tile"><div class="rs-val" id="rs-distance">—</div><div class="rs-label">Miles</div></div>
+                  <div class="route-stat stat-tile"><div class="rs-val" id="rs-duration">—</div><div class="rs-label">Duration</div></div>
+                  <div class="route-stat stat-tile"><div class="rs-val text-accent" id="rs-pace">—</div><div class="rs-label">Avg Pace</div></div>
+                  <div class="route-stat stat-tile"><div class="rs-val text-green" id="rs-hr">—</div><div class="rs-label">Avg HR</div></div>
+                </div>
+                <div class="map-container" id="route-map"></div>
+                <div style="font-size:11px;color:var(--text3);margin-top:8px;text-align:right">Map: © OpenStreetMap · Tiles: Stamen Terrain</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- HISTORY -->
+        <div class="page" id="page-history">
+          <div class="page-header">
+            <div class="flex-between">
+              <div><h2>History & Trends</h2><p>Your logged data over time</p></div>
+              <button class="btn btn-outline btn-sm" onclick="exportData()">Export JSON ↓</button>
+            </div>
+          </div>
+          <div class="grid2">
+            <div class="card"><div class="card-title">Weight Over Time</div><div class="chart-wrap"><canvas id="history-weight-chart"></canvas></div></div>
+            <div class="card"><div class="card-title">Steps Over Time</div><div class="chart-wrap"><canvas id="history-steps-chart"></canvas></div></div>
+          </div>
+          <div class="grid2 mt16">
+            <div class="card"><div class="card-title">Sleep Over Time</div><div class="chart-wrap"><canvas id="history-sleep-chart"></canvas></div></div>
+            <div class="card"><div class="card-title">Calories Over Time</div><div class="chart-wrap"><canvas id="history-cal-chart"></canvas></div></div>
+          </div>
+          <div class="card mt16">
+            <div class="card-title">All Log Entries</div>
+            <div id="all-logs-list"><p class="text-sm">No logs recorded yet.</p></div>
+          </div>
+        </div>
+
+      </div><!-- /content -->
+    </main>
+  </div>
+</div>
+
+<!-- ADD FOOD MODAL -->
+<div class="modal-overlay" id="food-modal">
+  <div class="modal">
+    <h3>Add Food Entry</h3>
+    <div class="form-group"><label>Food item</label><input type="text" id="food-name" placeholder="e.g. Grilled chicken breast, 6oz"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Calories</label><input type="number" id="food-cals" placeholder="280"></div>
+      <div class="form-group"><label>Meal</label><select id="food-meal"><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Protein (g)</label><input type="number" id="food-protein" placeholder="30"></div>
+      <div class="form-group"><label>Carbs (g)</label><input type="number" id="food-carbs" placeholder="0"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn btn-primary" onclick="addFood()">Add</button>
+      <button class="btn btn-outline" onclick="closeFoodModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- CREATE PROFILE MODAL -->
+<div class="modal-overlay" id="create-profile-modal">
+  <div class="modal">
+    <h3>Create Profile</h3>
+    <div class="form-group"><label>Name</label><input type="text" id="np-name" placeholder="Your name"></div>
+    <div class="form-group">
+      <label>Avatar Color</label>
+      <div class="color-grid" id="color-grid"></div>
+    </div>
+    <div class="form-group"><label>PIN (optional — 4 digits)</label><input type="password" id="np-pin" placeholder="Leave blank for no PIN" maxlength="4"></div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn btn-primary" onclick="createProfile()">Create</button>
+      <button class="btn btn-outline" onclick="closeCreateModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+'use strict';
+// ============================================================
+//  Baseline — Health & Fitness Tracker
+//  Multi-profile, self-hosted on Raspberry Pi
+// ============================================================
+
+const IS_SERVER = location.port === '3000';
+let CURRENT_PROFILE_ID = null;
+let CURRENT_PROFILE    = {};  // full profile data loaded from server
+
+// ── Avatar colors ────────────────────────────────────────────
+const COLORS = [
+  '#5b8af0','#7c6af5','#3ecf8e','#e879a0',
+  '#f5a623','#2dd4bf','#e55353','#a78bfa',
+  '#fb923c','#34d399','#60a5fa','#f472b6'
+];
+
+let selectedColor = COLORS[0];
+
+// ── API helpers ───────────────────────────────────────────────
+const api = {
+  async get(path) {
+    const r = await fetch(path);
+    if (!r.ok) throw new Error(`GET ${path} failed`);
+    return r.json();
+  },
+  async post(path, data) {
+    const r = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
+    if (!r.ok) throw new Error(`POST ${path} failed`);
+    return r.json();
+  },
+  async put(path, data) {
+    const r = await fetch(path, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
+    return r.json();
+  },
+  async del(path) {
+    const r = await fetch(path, { method:'DELETE' });
+    return r.json();
+  }
+};
+
+// ── Local cache (for offline resilience) ─────────────────────
+const cache = {
+  get(key) { try { return JSON.parse(localStorage.getItem('bl_'+key)) } catch(e) { return null } },
+  set(key, val) { localStorage.setItem('bl_'+key, JSON.stringify(val)) }
+};
+
+// ── Profile data accessors ───────────────────────────────────
+function getProfile()  { return CURRENT_PROFILE.profile || {}; }
+function getLogs()     { return CURRENT_PROFILE.logs    || []; }
+function getFoodLog()  { return CURRENT_PROFILE.food    || []; }
+function getKV(key)    { return (CURRENT_PROFILE.kv || {})[key]; }
+
+async function saveKV(key, val) {
+  if (!CURRENT_PROFILE.kv) CURRENT_PROFILE.kv = {};
+  CURRENT_PROFILE.kv[key] = val;
+  if (IS_SERVER) {
+    try { await api.post(`/api/profiles/${CURRENT_PROFILE_ID}/kv/${key}`, {value: val}); } catch(e){}
+  }
+}
+
+// ── Theme ─────────────────────────────────────────────────────
+function toggleTheme() {
+  const light = document.body.classList.toggle('light');
+  localStorage.setItem('bl_theme', light ? 'light' : 'dark');
+  ['theme-label','picker-theme-label'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = light ? 'Dark mode' : 'Light mode';
+  });
+}
+function applyTheme() {
+  if (localStorage.getItem('bl_theme') === 'light') {
+    document.body.classList.add('light');
+    ['theme-label','picker-theme-label'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = 'Dark mode';
+    });
+  }
+}
+
+// ── Profile Picker ────────────────────────────────────────────
+async function showPicker() {
+  CURRENT_PROFILE_ID = null;
+  CURRENT_PROFILE    = {};
+  document.getElementById('picker-screen').style.display = 'flex';
+  document.getElementById('pin-screen').style.display    = 'none';
+  document.getElementById('app-screen').style.display    = 'none';
+  await loadProfiles();
+}
+
+async function loadProfiles() {
+  const grid = document.getElementById('profiles-grid');
+  grid.innerHTML = '<div style="color:var(--text2);font-size:14px">Loading...</div>';
+  let profiles = [];
+  if (IS_SERVER) {
+    try { profiles = await api.get('/api/profiles'); } catch(e) {}
+  } else {
+    profiles = cache.get('profiles') || [];
+  }
+  const goalMap = {
+    lose_weight:'Lose weight', gain_muscle:'Build muscle',
+    maintain:'Maintain', improve_cardio:'Improve cardio',
+    flexibility:'Flexibility', athletic:'Athletic perf.'
+  };
+  grid.innerHTML = '';
+  profiles.forEach(p => {
+    const initials = p.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const card = document.createElement('div');
+    card.className = 'profile-card';
+    card.innerHTML = `
+      <div class="profile-avatar" style="background:${p.color}">${initials}</div>
+      <div class="profile-name">${p.name}</div>
+      <div class="profile-goal">${goalMap[p.goal] || 'No goal set'}</div>
+      ${p.has_pin ? '<div class="profile-pin-badge">🔒 PIN protected</div>' : ''}
+    `;
+    card.onclick = () => selectProfile(p);
+    grid.appendChild(card);
+  });
+  // Add profile button
+  const addCard = document.createElement('div');
+  addCard.className = 'add-profile-card';
+  addCard.innerHTML = '<div class="add-avatar">+</div><div style="font-size:13px;font-weight:600">Add Profile</div>';
+  addCard.onclick = openCreateModal;
+  grid.appendChild(addCard);
+}
+
+function selectProfile(p) {
+  if (p.has_pin) {
+    showPinScreen(p);
+  } else {
+    enterApp(p.id);
+  }
+}
+
+// ── PIN Screen ────────────────────────────────────────────────
+let pinBuffer = '';
+let pinProfileId = '';
+
+function showPinScreen(p) {
+  pinBuffer = '';
+  pinProfileId = p.id;
+  updatePinDots();
+  document.getElementById('pin-avatar').style.background = p.color;
+  document.getElementById('pin-avatar').textContent = p.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('pin-name').textContent = p.name;
+  document.getElementById('pin-error').textContent = '';
+  document.getElementById('picker-screen').style.display = 'none';
+  document.getElementById('pin-screen').style.display    = 'flex';
+}
+
+function pinPress(digit) {
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += digit;
+  updatePinDots();
+  if (pinBuffer.length === 4) setTimeout(submitPin, 150);
+}
+function pinBackspace() { pinBuffer = pinBuffer.slice(0,-1); updatePinDots(); }
+function pinClear()     { pinBuffer = ''; updatePinDots(); }
+function updatePinDots() {
+  for (let i=0; i<4; i++) {
+    document.getElementById('pd'+i).classList.toggle('filled', i < pinBuffer.length);
+  }
+}
+async function submitPin() {
+  try {
+    const res = await api.post(`/api/profiles/${pinProfileId}/verify`, {pin: pinBuffer});
+    if (res.ok) {
+      enterApp(pinProfileId);
+    } else {
+      document.getElementById('pin-error').textContent = 'Incorrect PIN — try again';
+      pinBuffer = '';
+      updatePinDots();
+    }
+  } catch(e) {
+    document.getElementById('pin-error').textContent = 'Error verifying PIN';
+    pinBuffer = '';
+    updatePinDots();
+  }
+}
+
+// ── Enter app ─────────────────────────────────────────────────
+async function enterApp(profileId) {
+  CURRENT_PROFILE_ID = profileId;
+  document.getElementById('picker-screen').style.display = 'none';
+  document.getElementById('pin-screen').style.display    = 'none';
+  document.getElementById('app-screen').style.display    = 'block';
+  await loadProfileData();
+  updateSidebar();
+  showPage('dashboard');
+}
+
+async function loadProfileData() {
+  if (!CURRENT_PROFILE_ID) return;
+  if (IS_SERVER) {
+    try {
+      CURRENT_PROFILE = await api.get(`/api/profiles/${CURRENT_PROFILE_ID}/data`);
+      cache.set('profile_'+CURRENT_PROFILE_ID, CURRENT_PROFILE);
+      return;
+    } catch(e) {}
+  }
+  CURRENT_PROFILE = cache.get('profile_'+CURRENT_PROFILE_ID) || {profile:{},logs:[],food:[],kv:{}};
+}
+
+// ── Navigation ────────────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.textContent.trim().toLowerCase().includes(id.replace(/_/g,' ').replace(/-/g,' '))) n.classList.add('active');
+  });
+  closeMobileNav();
+  if (id==='dashboard') renderDashboard();
+  if (id==='workouts')  renderWorkouts();
+  if (id==='routes')    renderRoutesPage();
+  if (id==='meals')     renderMeals();
+  if (id==='history')   renderHistory();
+  if (id==='profile')   loadProfileForm();
+  if (id==='bmi')       prefillBMI();
+  if (id==='sleep')     prefillSleep();
+  if (id==='daily')     prefillDaily();
+}
+
+function openMobileNav()  { document.getElementById('sidebar').classList.add('mobile-open'); document.getElementById('mobile-overlay').classList.add('open'); }
+function closeMobileNav() { document.getElementById('sidebar').classList.remove('mobile-open'); document.getElementById('mobile-overlay').classList.remove('open'); }
+
+// ── Sidebar ───────────────────────────────────────────────────
+function updateSidebar() {
+  const p = getProfile();
+  const initials = (p.name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const color    = CURRENT_PROFILE.color || COLORS[0];
+  document.getElementById('sb-avatar').style.background = color;
+  document.getElementById('sb-avatar').textContent = initials;
+  document.getElementById('sb-name').textContent = (p.name||'').split(' ')[0] || 'Profile';
+  const goalMap = {lose_weight:'Lose weight',gain_muscle:'Build muscle',maintain:'Maintain',improve_cardio:'Improve cardio',flexibility:'Flexibility',athletic:'Athletic perf.'};
+  document.getElementById('sb-goal').textContent = goalMap[p.goal] || 'No goal set';
+}
+
+// ── Auto-populate helpers ─────────────────────────────────────
+// These ensure that if data exists in the profile, every page uses it
+function prefillBMI() {
+  const p = getProfile();
+  if (p.weight) document.getElementById('bmi-weight').value = p.weight;
+  if (p.height) document.getElementById('bmi-height').value = p.height;
+  if (p.age)    document.getElementById('bmi-age').value    = p.age;
+  if (p.sex)    document.getElementById('bmi-sex').value    = p.sex;
+  if (p.weight && p.height) calcBMI();
+}
+
+function prefillSleep() {
+  const p   = getProfile();
+  const kv  = CURRENT_PROFILE.kv || {};
+  if (p.age)  document.getElementById('sl-age').value  = p.age;
+  if (kv.bmi) document.getElementById('sl-bmi').value  = kv.bmi;
+}
+
+function prefillDaily() {
+  const p = getProfile();
+  document.getElementById('log-date').value = new Date().toISOString().slice(0,10);
+  // Pre-fill today's weight from profile if no log entry yet
+  const today    = new Date().toISOString().slice(0,10);
+  const todayLog = getLogs().find(l => l.date === today);
+  if (todayLog?.weight) {
+    document.getElementById('log-weight').value = todayLog.weight;
+  } else if (p.weight) {
+    document.getElementById('log-weight').value = p.weight;
+  }
+}
+
+// ── Profile form ──────────────────────────────────────────────
+function loadProfileForm() {
+  const p = getProfile();
+  const fields = ['name','age','sex','height','weight','activity','goal','target-weight','target-date','cal-goal','days','location'];
+  const map = {'target-weight':'targetWeight','target-date':'targetDate','cal-goal':'calGoal'};
+  fields.forEach(f => {
+    const key = map[f] || f.replace(/-([a-z])/g, (_,c) => c.toUpperCase());
+    const el  = document.getElementById('p-'+f);
+    if (el && p[key] !== undefined) el.value = p[key];
+  });
+  if (p.weight && p.height && p.age) showCalcStats(p);
+}
+
+async function saveProfile() {
+  const p = {
+    name:         document.getElementById('p-name').value,
+    age:          +document.getElementById('p-age').value,
+    sex:          document.getElementById('p-sex').value,
+    height:       +document.getElementById('p-height').value,
+    weight:       +document.getElementById('p-weight').value,
+    activity:     document.getElementById('p-activity').value,
+    goal:         document.getElementById('p-goal').value,
+    targetWeight: +document.getElementById('p-target-weight').value,
+    targetDate:   document.getElementById('p-target-date').value,
+    calGoal:      +document.getElementById('p-cal-goal').value,
+    days:         +document.getElementById('p-days').value,
+    location:     document.getElementById('p-location').value
+  };
+  CURRENT_PROFILE.profile = p;
+  if (IS_SERVER) {
+    try { await api.post(`/api/profiles/${CURRENT_PROFILE_ID}/profile`, p); } catch(e) { toast('Save failed',''); return; }
+  }
+  cache.set('profile_'+CURRENT_PROFILE_ID, CURRENT_PROFILE);
+  updateSidebar();
+  showCalcStats(p);
+  document.getElementById('profile-saved-msg').style.display = 'inline';
+  setTimeout(() => document.getElementById('profile-saved-msg').style.display='none', 2000);
+  toast('Profile saved!','success');
+}
+
+async function savePin() {
+  const pin = document.getElementById('p-pin').value;
+  if (IS_SERVER) {
+    try { await api.put(`/api/profiles/${CURRENT_PROFILE_ID}`, {pin}); } catch(e) { toast('Failed',''); return; }
+  }
+  toast(pin ? 'PIN saved!' : 'PIN removed','success');
+  document.getElementById('p-pin').value = '';
+}
+
+function confirmDeleteProfile() {
+  if (!confirm('Delete this profile and all its data? This cannot be undone.')) return;
+  deleteProfile();
+}
+async function deleteProfile() {
+  if (IS_SERVER) {
+    try { await api.del(`/api/profiles/${CURRENT_PROFILE_ID}`); } catch(e) {}
+  }
+  cache.set('profile_'+CURRENT_PROFILE_ID, null);
+  showPicker();
+}
+
+// ── Calculations ───────────────────────────────────────────────
+function calcBMIVal(weight, height) { return ((weight / (height*height)) * 703).toFixed(1); }
+function bmiCategory(bmi) {
+  if (bmi < 18.5) return 'Underweight';
+  if (bmi < 25)   return 'Normal weight';
+  if (bmi < 30)   return 'Overweight';
+  return 'Obese';
+}
+function calcBMR(p) {
+  const wKg = p.weight * 0.453592, hCm = p.height * 2.54;
+  return p.sex==='male' ? Math.round(10*wKg+6.25*hCm-5*p.age+5) : Math.round(10*wKg+6.25*hCm-5*p.age-161);
+}
+function calcTDEE(bmr, activity) {
+  return Math.round(bmr * ({sedentary:1.2,light:1.375,moderate:1.55,active:1.725,very_active:1.9}[activity]||1.55));
+}
+
+function showCalcStats(p) {
+  if (!p.weight||!p.height||!p.age) return;
+  const bmi    = calcBMIVal(p.weight, p.height);
+  const bmr    = calcBMR(p);
+  const tdee   = calcTDEE(bmr, p.activity);
+  let target   = tdee;
+  if (p.goal==='lose_weight')   target = tdee - 500;
+  else if (p.goal==='gain_muscle') target = tdee + 300;
+  if (p.calGoal) target = p.calGoal;
+  saveKV('calTarget', target);
+  saveKV('bmi', parseFloat(bmi));
+
+  const prRates = {
+    lose_weight:    {rate:1.0, label:'1.0g/lb', why:'High protein preserves muscle while in a calorie deficit and keeps you fuller longer.'},
+    gain_muscle:    {rate:1.1, label:'1.1g/lb', why:'Building muscle requires consistent amino acid surplus — 1.1g/lb gives muscles the raw material they need.'},
+    maintain:       {rate:0.8, label:'0.8g/lb', why:'Sufficient to preserve muscle mass and support recovery from regular exercise.'},
+    improve_cardio: {rate:0.7, label:'0.7g/lb', why:'Moderate protein supports muscle repair after cardio and prevents breakdown during long efforts.'},
+    flexibility:    {rate:0.7, label:'0.7g/lb', why:'Adequate protein for tissue repair, joint health, and baseline recovery.'},
+    athletic:       {rate:1.1, label:'1.1g/lb', why:'Athletic performance demands high protein to support power output and rapid recovery between sessions.'}
+  };
+  const pr = prRates[p.goal] || prRates.maintain;
+  const proteinG = Math.round(p.weight * pr.rate);
+
+  document.getElementById('calc-stats').style.display = 'block';
+  document.getElementById('cs-bmi').textContent     = bmi;
+  document.getElementById('cs-bmi-cat').textContent  = bmiCategory(bmi);
+  document.getElementById('cs-bmr').textContent      = bmr.toLocaleString();
+  document.getElementById('cs-tdee').textContent     = tdee.toLocaleString();
+  document.getElementById('cs-target').textContent   = target.toLocaleString();
+  document.getElementById('cs-protein').textContent  = proteinG+'g';
+  document.getElementById('cs-protein-sub').textContent = pr.label + ' of bodyweight';
+  document.getElementById('cs-protein-advice').innerHTML =
+    `<strong style="color:var(--text)">Why ${proteinG}g?</strong> ${pr.why} That's <strong style="color:var(--green)">${Math.round((proteinG*4/target)*100)}% of your daily calories</strong>. Aim for <strong style="color:var(--text)">${Math.round(proteinG/4)}–${Math.round(proteinG/3)}g per meal</strong>.`;
+}
+
+// ── BMI ───────────────────────────────────────────────────────
+function calcBMI() {
+  const w = +document.getElementById('bmi-weight').value;
+  const h = +document.getElementById('bmi-height').value;
+  if (!w||!h) return;
+  const bmi = parseFloat(calcBMIVal(w,h));
+  document.getElementById('bmi-result').style.display = 'block';
+  document.getElementById('bmi-val').textContent = bmi.toFixed(1);
+  const cat = bmiCategory(bmi);
+  const el  = document.getElementById('bmi-band');
+  el.textContent = cat;
+  const bgMap = {Underweight:'rgba(91,138,240,0.15)','Normal weight':'rgba(62,207,142,0.15)',Overweight:'rgba(245,166,35,0.15)',Obese:'rgba(229,83,83,0.15)'};
+  const clrMap = {Underweight:'var(--accent)','Normal weight':'var(--green)',Overweight:'var(--orange)',Obese:'var(--red)'};
+  el.style.background = bgMap[cat]||''; el.style.color = clrMap[cat]||'';
+  let pct = bmi<18.5 ? (bmi/18.5)*25 : bmi<25 ? 25+((bmi-18.5)/6.5)*25 : bmi<30 ? 50+((bmi-25)/5)*25 : 75+Math.min(((bmi-30)/10)*25,24);
+  document.getElementById('bmi-pointer').style.left = pct+'%';
+  const advices = {
+    Underweight: `Your BMI of <strong>${bmi.toFixed(1)}</strong> suggests underweight. Focus on calorie-dense whole foods, strength training 3–4x/week, and adequate protein (0.8–1g/lb).`,
+    'Normal weight': `Your BMI of <strong>${bmi.toFixed(1)}</strong> is in the healthy range. Maintain through balanced nutrition and 150+ min of moderate exercise per week.`,
+    Overweight: `Your BMI of <strong>${bmi.toFixed(1)}</strong> is overweight. A 300–500 kcal/day deficit with regular exercise will help. Focus on cardio 3–4x/week and reducing processed carbs.`,
+    Obese: `Your BMI of <strong>${bmi.toFixed(1)}</strong> suggests excess weight. Start with daily 30-min walks, track calories, reduce sugar and refined carbs. Consider consulting a healthcare provider.`
+  };
+  document.getElementById('bmi-advice').innerHTML = `<p style="line-height:1.7">${advices[cat]||advices['Normal weight']}</p>`;
+}
+
+// ── Sleep ─────────────────────────────────────────────────────
+function calcSleep() {
+  const age    = +document.getElementById('sl-age').value;
+  const wake   = document.getElementById('sl-wake').value;
+  const bmi    = +document.getElementById('sl-bmi').value;
+  const stress = document.getElementById('sl-stress').value;
+  if (!age) { toast('Enter your age',''); return; }
+  let rec = age<=13?10:age<=17?9:age<=25?8.5:age<=64?8:7.5;
+  if (stress==='high') rec+=0.5;
+  if (bmi>=30) rec+=0.5;
+  let bedtimeHtml = '';
+  if (wake) {
+    const m = wake.match(/(\d+):(\d+)\s*(am|pm)?/i);
+    if (m) {
+      let wh=+m[1],wm=+m[2]; const ap=(m[3]||'').toLowerCase();
+      if(ap==='pm'&&wh<12)wh+=12; if(ap==='am'&&wh===12)wh=0;
+      const wMins=wh*60+wm;
+      const opts=[5,5.5,6,7.5,9].map(h=>{
+        let bed=wMins-Math.round(h*60)-15; if(bed<0)bed+=1440;
+        const bh=Math.floor(bed/60)%12||12, bm=String(bed%60).padStart(2,'0'), bap=Math.floor(bed/60)<12?'AM':'PM';
+        return `<div style="background:var(--bg4);border-radius:var(--radius-sm);padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
+          <div><div style="font-size:18px;font-weight:700;color:var(--accent)">${bh}:${bm} ${bap}</div><div style="font-size:12px;color:var(--text2)">${h} hrs · ${Math.round(h/1.5)} cycles</div></div>
+          <div style="font-size:12px;color:${h>=rec-0.5&&h<=rec+0.5?'var(--green)':'var(--text2)'}">${h>=rec-0.5&&h<=rec+0.5?'★ Ideal':''}</div>
+        </div>`;
+      });
+      bedtimeHtml=`<div style="margin-top:16px"><div class="card-title">Bedtime Options (waking ${wake})</div><div style="display:flex;flex-direction:column;gap:8px">${opts.join('')}</div></div>`;
+    }
+  }
+  document.getElementById('sleep-output').innerHTML=`
+    <div class="card-title">Recommended Sleep</div>
+    <div class="sleep-block"><div class="sleep-time">${rec}–${rec+0.5} hrs</div><div style="color:var(--text2);font-size:13px;margin-top:6px">per night for age ${age}</div></div>
+    <p style="font-size:13px;color:var(--text2);margin-top:12px;line-height:1.7">Optimal sleep is <strong style="color:var(--text)">5 complete 90-min cycles</strong>. Wake at the end of a cycle to avoid grogginess.</p>
+    ${bedtimeHtml}`;
+}
+
+// ── Workout plans ─────────────────────────────────────────────
+const WORKOUT_PLANS = {
+  lose_weight: { label:'Fat Loss Plan', desc:'Full-body resistance + cardio to maximize calorie burn and preserve muscle.', schedule:[
+    {day:'Day 1',type:'Full Body Strength',tag:'Strength',duration:'45 min',exercises:[{name:'Goblet Squat',sets:'3×12',note:'Dumbbell or barbell'},{name:'Push-Ups / Bench Press',sets:'3×12',note:'Home or gym'},{name:'Romanian Deadlift',sets:'3×12',note:'Light-moderate'},{name:'Bent-Over Row',sets:'3×10',note:'Dumbbells or barbell'},{name:'Plank',sets:'3×45s',note:''},{name:'Mountain Climbers',sets:'3×30s',note:'Fast pace'}]},
+    {day:'Day 2',type:'Cardio HIIT',tag:'Cardio',duration:'30 min',exercises:[{name:'Warm-up jog',sets:'5 min',note:''},{name:'Burpees',sets:'4×30s on/off',note:''},{name:'Jump Squats',sets:'4×30s on/off',note:'Low-impact option: squat to stand'},{name:'High Knees',sets:'4×30s on/off',note:''},{name:'Cool-down walk',sets:'10 min',note:''}]},
+    {day:'Day 3',type:'Rest / Walk',tag:'Rest',duration:'20–30 min',exercises:[{name:'Brisk walk',sets:'20–30 min',note:'6,000+ steps'},{name:'Stretching',sets:'10 min',note:'Hip flexors, hamstrings'}]},
+    {day:'Day 4',type:'Upper Body + Core',tag:'Strength',duration:'40 min',exercises:[{name:'Shoulder Press',sets:'3×12',note:'Seated or standing'},{name:'Lat Pulldown / Band Row',sets:'3×12',note:''},{name:'Chest Fly',sets:'3×12',note:'Dumbbells or cables'},{name:'Bicep Curls',sets:'3×12',note:''},{name:'Tricep Dips',sets:'3×12',note:'Chair or bench'},{name:'Bicycle Crunches',sets:'3×20',note:''}]},
+    {day:'Day 5',type:'Lower Body + Glutes',tag:'Strength',duration:'45 min',exercises:[{name:'Barbell or Goblet Squat',sets:'4×10',note:'Full depth'},{name:'Reverse Lunges',sets:'3×12 each',note:'Dumbbell or bodyweight'},{name:'Hip Thrust / Glute Bridge',sets:'3×15',note:'Barbell or bodyweight'},{name:'Leg Press',sets:'3×12',note:'Gym / sub Bulgarian split squat at home'},{name:'Calf Raises',sets:'3×20',note:''},{name:'Walking Lunges',sets:'2×20',note:'Finisher'}]}
+  ]},
+  gain_muscle: { label:'Muscle Building Plan', desc:'Push/Pull/Legs split with progressive overload. Home or gym.', schedule:[
+    {day:'Day 1',type:'Push Day',tag:'Strength',duration:'50 min',exercises:[{name:'Bench Press / Floor Press',sets:'4×8',note:'Barbell (gym) or dumbbells (home)'},{name:'Overhead Press',sets:'3×10',note:''},{name:'Incline DB Press',sets:'3×10',note:''},{name:'Lateral Raises',sets:'3×15',note:'Light, controlled'},{name:'Tricep Extension',sets:'3×12',note:'Cable or dumbbell'},{name:'Push-Up burnout',sets:'2×max',note:''}]},
+    {day:'Day 2',type:'Pull Day',tag:'Strength',duration:'50 min',exercises:[{name:'Barbell / DB Row',sets:'4×8',note:''},{name:'Pull-Ups / Lat Pulldown',sets:'4×8',note:''},{name:'Face Pulls',sets:'3×15',note:'Rear delt health'},{name:'Bicep Curl',sets:'3×12',note:''},{name:'Hammer Curls',sets:'3×12',note:''},{name:'Shrugs',sets:'3×15',note:''}]},
+    {day:'Day 3',type:'Legs',tag:'Strength',duration:'55 min',exercises:[{name:'Back Squat / Goblet Squat',sets:'4×8',note:''},{name:'Romanian Deadlift',sets:'4×10',note:''},{name:'Bulgarian Split Squat',sets:'3×10 each',note:''},{name:'Leg Press',sets:'3×12',note:'Gym / step-ups at home'},{name:'Leg Curl / Nordic Ham',sets:'3×12',note:''},{name:'Calf Raises',sets:'4×15',note:'Full ROM'}]},
+    {day:'Day 4',type:'Rest / Recovery',tag:'Rest',duration:'—',exercises:[{name:'Foam rolling',sets:'10 min',note:''},{name:'Yoga / stretching',sets:'15–20 min',note:''}]},
+    {day:'Day 5',type:'Push Day 2',tag:'Strength',duration:'50 min',exercises:[{name:'Incline Bench Press',sets:'4×8',note:'Upper chest'},{name:'Arnold Press',sets:'3×10',note:''},{name:'Cable / DB Fly',sets:'3×12',note:''},{name:'Upright Row',sets:'3×12',note:''},{name:'Skull Crushers',sets:'3×12',note:''}]},
+    {day:'Day 6',type:'Pull Day 2',tag:'Strength',duration:'50 min',exercises:[{name:'Deadlift',sets:'3×5',note:'Heavy compound'},{name:'Seated Row',sets:'4×10',note:''},{name:'Single Arm DB Row',sets:'3×10 each',note:''},{name:'Incline DB Curl',sets:'3×12',note:''},{name:'Rear Delt Fly',sets:'3×15',note:''}]}
+  ]},
+  maintain: { label:'Maintenance & General Fitness', desc:'Balanced 3–4 day routine of strength, cardio, and mobility.', schedule:[
+    {day:'Day 1',type:'Full Body Strength',tag:'Strength',duration:'45 min',exercises:[{name:'Squat',sets:'3×10',note:''},{name:'Push-Up / Bench',sets:'3×10',note:''},{name:'DB Row',sets:'3×10 each',note:''},{name:'Overhead Press',sets:'3×10',note:''},{name:'Romanian Deadlift',sets:'3×10',note:''},{name:'Plank',sets:'3×45s',note:''}]},
+    {day:'Day 2',type:'Cardio + Core',tag:'Cardio',duration:'35 min',exercises:[{name:'Jog / brisk walk',sets:'20 min',note:'Conversational pace'},{name:'Hollow Hold',sets:'3×30s',note:''},{name:'Dead Bug',sets:'3×10 each',note:''},{name:'Bird Dog',sets:'3×10 each',note:''}]},
+    {day:'Day 3',type:'Upper Body',tag:'Strength',duration:'40 min',exercises:[{name:'Pull-Ups / Lat Pulldown',sets:'3×8',note:''},{name:'Incline Push-Up / Bench',sets:'3×12',note:''},{name:'Lateral Raise',sets:'3×15',note:''},{name:'Face Pulls',sets:'3×15',note:''},{name:'Curls + Tricep Dips',sets:'2×12 each',note:'Superset'}]},
+    {day:'Day 4',type:'Mobility & Stretch',tag:'Mobility',duration:'30 min',exercises:[{name:'Hip flexor stretch',sets:'2×60s each',note:''},{name:'Thoracic rotation',sets:'2×10 each',note:''},{name:"World's greatest stretch",sets:'5 each side',note:''},{name:'Pigeon pose',sets:'2×60s each',note:''},{name:'Shoulder stretch',sets:'2×45s each',note:''}]}
+  ]},
+  improve_cardio: { label:'Cardiovascular Fitness Plan', desc:'Progressive cardio building from base aerobic capacity to intervals.', schedule:[
+    {day:'Day 1',type:'Easy Aerobic',tag:'Cardio',duration:'40 min',exercises:[{name:'Jog / cycle / row / elliptical',sets:'35 min',note:'Zone 2 — conversational pace'},{name:'Cool-down walk',sets:'5 min',note:''}]},
+    {day:'Day 2',type:'Intervals',tag:'HIIT',duration:'30 min',exercises:[{name:'Warm-up',sets:'5 min easy',note:''},{name:'1 min hard / 2 min easy',sets:'8 rounds',note:'Run, bike, or bodyweight'},{name:'Cool-down',sets:'5 min',note:''}]},
+    {day:'Day 3',type:'Active Recovery',tag:'Rest',duration:'20 min',exercises:[{name:'Easy walk',sets:'20 min',note:''},{name:'Stretching',sets:'10 min',note:''}]},
+    {day:'Day 4',type:'Tempo Run',tag:'Cardio',duration:'35 min',exercises:[{name:'Warm-up',sets:'5 min',note:''},{name:'Sustained effort',sets:'20 min',note:'Zone 3–4'},{name:'Cool-down',sets:'10 min',note:''}]},
+    {day:'Day 5',type:'Long Easy Cardio',tag:'Cardio',duration:'50–60 min',exercises:[{name:'Long slow cardio',sets:'50–60 min',note:'Build aerobic base'}]}
+  ]},
+  flexibility: { label:'Flexibility & Mobility Plan', desc:'Full home practice — stretching, yoga flows, and mobility work.', schedule:[
+    {day:'Day 1',type:'Full Body Stretching',tag:'Mobility',duration:'35 min',exercises:[{name:'Neck rolls + shoulder circles',sets:'2 min',note:''},{name:'Cat-Cow',sets:'2×10',note:''},{name:"World's greatest stretch",sets:'5 each side',note:''},{name:'Deep squat hold',sets:'3×30s',note:''},{name:'Pigeon pose',sets:'2×90s each',note:''},{name:'Seated forward fold',sets:'3×60s',note:''}]},
+    {day:'Day 2',type:'Yoga Flow',tag:'Mobility',duration:'30 min',exercises:[{name:'Sun salutation A',sets:'5 rounds',note:''},{name:'Sun salutation B',sets:'3 rounds',note:''},{name:'Warrior sequence',sets:'3 each side',note:'5 breaths each'},{name:'Seated twist',sets:'2×60s each',note:''},{name:'Savasana',sets:'5 min',note:''}]},
+    {day:'Day 3',type:'Hip & Lower Body',tag:'Mobility',duration:'30 min',exercises:[{name:'90/90 hip stretch',sets:'2×90s each',note:''},{name:'Couch stretch',sets:'2×90s each',note:''},{name:'Butterfly stretch',sets:'3×60s',note:''},{name:'Supine twist',sets:'2×60s each',note:''},{name:'Hamstring + PNF stretch',sets:'3×30s+10s contract',note:''}]}
+  ]},
+  athletic: { label:'Athletic Performance Plan', desc:'Power, speed, and strength for athletic goals.', schedule:[
+    {day:'Day 1',type:'Power & Explosiveness',tag:'Power',duration:'50 min',exercises:[{name:'Box Jumps / Vertical Jumps',sets:'4×5',note:'Max effort'},{name:'Power Clean or DB Hang Clean',sets:'4×4',note:''},{name:'Trap Bar / Barbell Deadlift',sets:'4×5',note:'Heavy'},{name:'Sprint intervals',sets:'6×30m',note:'Full recovery'}]},
+    {day:'Day 2',type:'Upper Body Strength',tag:'Strength',duration:'50 min',exercises:[{name:'Bench Press',sets:'4×5',note:'Heavy'},{name:'Weighted Pull-Ups',sets:'4×6',note:''},{name:'Push Press',sets:'3×6',note:''},{name:'DB Row',sets:'3×8 each',note:''},{name:'Med ball rotational throw',sets:'3×8 each',note:''}]},
+    {day:'Day 3',type:'Speed & Agility',tag:'Cardio',duration:'40 min',exercises:[{name:'Ladder drills',sets:'10 min',note:''},{name:'Lateral bounds',sets:'5×30s',note:''},{name:'T-drill',sets:'6 reps timed',note:''},{name:'Broad jumps',sets:'4×5',note:'Max distance'}]},
+    {day:'Day 4',type:'Lower Body Strength',tag:'Strength',duration:'55 min',exercises:[{name:'Back Squat',sets:'5×5',note:'Progressive overload'},{name:'Romanian Deadlift',sets:'4×8',note:''},{name:'Single Leg Squat',sets:'3×6 each',note:''},{name:'Nordic Hamstring Curl',sets:'3×6',note:'Injury prevention'},{name:'Calf Raises',sets:'4×12',note:''}]}
+  ]}
+};
+
+function renderWorkouts() {
+  const p = getProfile();
+  const container = document.getElementById('workout-plan-container');
+  if (!p.goal||!WORKOUT_PLANS[p.goal]) {
+    container.innerHTML='<div class="card"><p class="text-sm">Set your fitness goal in Profile & Goals to generate a workout plan.</p></div>'; return;
+  }
+  const plan=WORKOUT_PLANS[p.goal];
+  const days=plan.schedule.slice(0,p.days||5);
+  const tagC={Strength:'tag-blue',Cardio:'tag-green',HIIT:'tag-orange',Mobility:'tag-pink',Power:'tag-teal',Rest:'tag-teal'};
+  container.innerHTML=`
+    <div class="card mb16">
+      <div class="flex-between mb8"><div><div class="section-title">${plan.label}</div><div class="text-sm">${plan.desc}</div></div><div class="tag tag-blue">${p.days||5} days/week</div></div>
+      <div class="text-sm">Location: ${p.location==='home'?'Home (bodyweight + dumbbells)':p.location==='gym'?'Gym (EOS/standard)':'Home & gym — both listed'}</div>
+    </div>
+    ${days.map(d=>`
+      <div class="workout-card" onclick="this.classList.toggle('open')">
+        <div class="workout-header">
+          <div><div class="workout-title">${d.day}: ${d.type}</div><div class="workout-meta">${d.duration} &nbsp;·&nbsp; <span class="tag ${tagC[d.tag]||'tag-blue'}">${d.tag}</span></div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();this.textContent=this.textContent.includes('Done')?'Mark Done':'✓ Done!';this.closest('.workout-card').classList.toggle('done')">Mark Done</button>
+            <span style="color:var(--text2)">▾</span>
+          </div>
+        </div>
+        <div class="exercise-list">
+          ${d.exercises.map(e=>`<div class="exercise-row"><div><div style="font-weight:500">${e.name}</div>${e.note?`<div style="font-size:11px;color:var(--text2)">${e.note}</div>`:''}</div><div style="font-size:13px;color:var(--text2);font-weight:500">${e.sets}</div></div>`).join('')}
+        </div>
+      </div>`).join('')}`;
+}
+
+// ── Meal plans ────────────────────────────────────────────────
+const MEAL_PLANS = {
+  lose_weight: { label:'Fat Loss Meal Plan', desc:'High protein, calorie deficit. ~40% protein, 35% carbs, 25% fat.', meals:[
+    {time:'7:00 AM',name:'Protein Breakfast',pct:0.22,protein:35,carbs:30,fat:12,items:'3 eggs + 2 whites, 1 slice whole grain toast, ½ cup Greek yogurt, black coffee'},
+    {time:'10:00 AM',name:'Mid-Morning Snack',pct:0.10,protein:20,carbs:15,fat:5,items:'1 protein shake, 1 apple or handful of berries'},
+    {time:'12:30 PM',name:'Lean Protein Lunch',pct:0.28,protein:45,carbs:40,fat:14,items:'Grilled chicken or turkey (6oz), large salad with vinaigrette, ½ cup brown rice or quinoa'},
+    {time:'3:30 PM',name:'Afternoon Snack',pct:0.10,protein:15,carbs:20,fat:8,items:'Cottage cheese (½ cup) + celery, or rice cakes with 1 tbsp almond butter'},
+    {time:'6:30 PM',name:'Dinner',pct:0.25,protein:40,carbs:30,fat:16,items:'Salmon or lean beef (6oz), roasted vegetables, ½ cup sweet potato'},
+    {time:'8:30 PM',name:'Evening Snack (optional)',pct:0.05,protein:15,carbs:5,fat:3,items:'Casein protein shake or low-fat cottage cheese'}
+  ]},
+  gain_muscle: { label:'Muscle Building Meal Plan', desc:'Calorie surplus, high protein. ~30% protein, 45% carbs, 25% fat.', meals:[
+    {time:'7:00 AM',name:'Big Breakfast',pct:0.25,protein:40,carbs:60,fat:20,items:'4 eggs, 2 slices whole grain bread, 1 banana, 1 cup oatmeal with protein powder, glass of milk'},
+    {time:'10:00 AM',name:'Muscle Snack',pct:0.12,protein:30,carbs:45,fat:10,items:'Greek yogurt (1 cup) + granola + berries, or a homemade protein bar'},
+    {time:'1:00 PM',name:'Bulk Lunch',pct:0.28,protein:55,carbs:80,fat:20,items:'Chicken or beef (8oz), 1 cup rice or pasta, mixed vegetables, glass of milk or protein shake'},
+    {time:'3:30 PM',name:'Pre-Workout',pct:0.10,protein:20,carbs:40,fat:5,items:'1 banana + 1 scoop whey, or rice cakes + peanut butter'},
+    {time:'7:00 PM',name:'Post-Workout Dinner',pct:0.25,protein:55,carbs:60,fat:18,items:'Steak or chicken (8–10oz), baked potato or sweet potato, steamed broccoli'}
+  ]},
+  maintain: { label:'Balanced Maintenance Plan', desc:'Balanced macros at TDEE. ~25% protein, 45% carbs, 30% fat.', meals:[
+    {time:'7:30 AM',name:'Balanced Breakfast',pct:0.25,protein:25,carbs:45,fat:15,items:'2 eggs + ½ avocado on toast, 1 piece fruit, coffee'},
+    {time:'12:00 PM',name:'Lunch',pct:0.35,protein:35,carbs:55,fat:18,items:'Chicken, salmon, or plant protein (5–6oz), 1 cup grains, large vegetable serving'},
+    {time:'3:30 PM',name:'Snack',pct:0.10,protein:12,carbs:20,fat:8,items:'Mixed nuts + apple, or hummus with vegetables'},
+    {time:'7:00 PM',name:'Dinner',pct:0.30,protein:30,carbs:45,fat:18,items:'Lean protein (5–6oz), roasted vegetables, moderate starch serving'}
+  ]}
+};
+
+function renderMeals() {
+  const p         = getProfile();
+  const calTarget = getKV('calTarget') || p.calGoal || 0;
+  const container = document.getElementById('meal-plan-container');
+  if (!calTarget) { container.innerHTML='<div class="card"><p class="text-sm">Set your goals in Profile & Goals to see meal suggestions.</p></div>'; return; }
+  document.getElementById('meal-cal-target').textContent = calTarget.toLocaleString()+' kcal';
+  const planKey   = p.goal==='lose_weight'?'lose_weight':p.goal==='gain_muscle'?'gain_muscle':'maintain';
+  const plan      = MEAL_PLANS[planKey];
+  container.innerHTML=`
+    <div class="card mb16">
+      <div class="section-title">${plan.label}</div>
+      <div class="text-sm mb16">${plan.desc}</div>
+      <div class="grid4">
+        <div class="stat-tile"><div class="label">Daily Calories</div><div class="value text-accent">${calTarget.toLocaleString()}</div></div>
+        <div class="stat-tile"><div class="label">Protein</div><div class="value text-green">${Math.round(calTarget*0.30/4)}g</div><div class="sub">30% of calories</div></div>
+        <div class="stat-tile"><div class="label">Carbs</div><div class="value" style="color:var(--orange)">${Math.round(calTarget*0.40/4)}g</div><div class="sub">40%</div></div>
+        <div class="stat-tile"><div class="label">Fat</div><div class="value" style="color:var(--pink)">${Math.round(calTarget*0.30/9)}g</div><div class="sub">30%</div></div>
+      </div>
+    </div>
+    <div class="section-title mt16">Daily Meal Schedule</div>
+    ${plan.meals.map(m=>{const mc=Math.round(calTarget*m.pct);return`
+      <div class="meal-slot">
+        <div class="meal-time">${m.time}</div>
+        <div class="flex-between"><div class="meal-name">${m.name}</div><div style="font-size:14px;font-weight:600;color:var(--accent)">${mc} kcal</div></div>
+        <div style="font-size:13px;color:var(--text2);margin-top:6px;line-height:1.6">${m.items}</div>
+        <div class="meal-macros"><div class="macro">Protein <span>${m.protein}g</span></div><div class="macro">Carbs <span>${m.carbs}g</span></div><div class="macro">Fat <span>${m.fat}g</span></div></div>
+      </div>`}).join('')}`;
+  renderFoodLog();
+}
+
+// ── Food log ──────────────────────────────────────────────────
+function openAddFood()  { document.getElementById('food-modal').classList.add('open'); }
+function closeFoodModal() { document.getElementById('food-modal').classList.remove('open'); }
+
+async function addFood() {
+  const name    = document.getElementById('food-name').value.trim();
+  const cals    = +document.getElementById('food-cals').value;
+  const meal    = document.getElementById('food-meal').value;
+  const protein = +document.getElementById('food-protein').value;
+  const carbs   = +document.getElementById('food-carbs').value;
+  if (!name||!cals) { toast('Enter food name and calories',''); return; }
+  const today   = new Date().toISOString().slice(0,10);
+  const entry   = {date:today,name,cals,meal,protein,carbs,ts:Date.now()};
+  if (!CURRENT_PROFILE.food) CURRENT_PROFILE.food = [];
+  CURRENT_PROFILE.food.push(entry);
+  if (IS_SERVER) {
+    try { await api.post(`/api/profiles/${CURRENT_PROFILE_ID}/food`, entry); } catch(e){}
+  }
+  cache.set('profile_'+CURRENT_PROFILE_ID, CURRENT_PROFILE);
+  closeFoodModal();
+  ['food-name','food-cals','food-protein','food-carbs'].forEach(id=>document.getElementById(id).value='');
+  renderFoodLog();
+  toast('Food added!','success');
+}
+
+function renderFoodLog() {
+  const today = new Date().toISOString().slice(0,10);
+  const log   = getFoodLog().filter(e=>e.date===today);
+  const total = log.reduce((s,e)=>s+e.cals,0);
+  const el    = document.getElementById('food-log-list');
+  if (!el) return;
+  el.innerHTML = log.length ? log.map(e=>`
+    <div class="log-entry">
+      <div class="log-dot" style="background:var(--accent)"></div>
+      <div style="flex:1"><div style="font-weight:500;font-size:14px">${e.name}</div><div style="font-size:12px;color:var(--text2)">${e.meal}${e.protein?' · '+e.protein+'g protein':''}</div></div>
+      <div style="font-weight:600">${e.cals} kcal</div>
+    </div>`).join('') : '<p class="text-sm">No food logged today</p>';
+  document.getElementById('total-cals-today').textContent = total.toLocaleString()+' kcal';
+}
+
+// ── Daily log ─────────────────────────────────────────────────
+async function saveLog() {
+  const entry = {
+    date:       document.getElementById('log-date').value,
+    weight:     +document.getElementById('log-weight').value||null,
+    steps:      +document.getElementById('log-steps').value||null,
+    calsBurned: +document.getElementById('log-cal-burned').value||null,
+    sleep:      +document.getElementById('log-sleep').value||null,
+    water:      +document.getElementById('log-water').value||null,
+    hr:         +document.getElementById('log-hr').value||null,
+    mood:       +document.getElementById('log-mood').value||null,
+    workout:    document.getElementById('log-workout').value,
+    workoutDur: +document.getElementById('log-workout-dur').value||null,
+    intensity:  +document.getElementById('log-intensity').value||null,
+    notes:      document.getElementById('log-notes').value,
+    ts:         Date.now()
+  };
+  if (!CURRENT_PROFILE.logs) CURRENT_PROFILE.logs=[];
+  CURRENT_PROFILE.logs = [entry,...CURRENT_PROFILE.logs.filter(l=>l.date!==entry.date)].sort((a,b)=>b.date.localeCompare(a.date));
+  if (IS_SERVER) {
+    try { await api.post(`/api/profiles/${CURRENT_PROFILE_ID}/logs`, entry); } catch(e){}
+  }
+  // If weight logged, also update profile weight
+  if (entry.weight) {
+    const p = getProfile();
+    p.weight = entry.weight;
+    CURRENT_PROFILE.profile = p;
+    if (IS_SERVER) {
+      try { await api.post(`/api/profiles/${CURRENT_PROFILE_ID}/profile`, p); } catch(e){}
+    }
+  }
+  cache.set('profile_'+CURRENT_PROFILE_ID, CURRENT_PROFILE);
+  toast('Log saved!','success');
+  updateCalStrip();
+}
+
+function parseImport() {
+  const raw = document.getElementById('import-data').value.trim();
+  if (!raw) return;
+  try {
+    const d = JSON.parse(raw);
+    if (d.steps)                  document.getElementById('log-steps').value      = d.steps;
+    if (d.weight)                 document.getElementById('log-weight').value     = d.weight;
+    if (d.sleep)                  document.getElementById('log-sleep').value      = d.sleep;
+    if (d.heartRate||d.rhr)       document.getElementById('log-hr').value         = d.heartRate||d.rhr;
+    if (d.caloriesBurned||d.active_calories) document.getElementById('log-cal-burned').value = d.caloriesBurned||d.active_calories;
+    toast('Data imported!','success');
+  } catch(e) {
+    const lines=raw.split('\n');
+    if (lines.length>1) {
+      const headers=lines[0].split(',').map(h=>h.trim().toLowerCase());
+      const vals=lines[1].split(',').map(v=>v.trim());
+      const row={};
+      headers.forEach((h,i)=>row[h]=vals[i]);
+      if (row.steps)  document.getElementById('log-steps').value  = row.steps;
+      if (row.weight) document.getElementById('log-weight').value = row.weight;
+      if (row.sleep)  document.getElementById('log-sleep').value  = row.sleep;
+      toast('CSV parsed!','success');
+    } else { toast('Could not parse — try JSON format',''); }
+  }
+}
+
+// ── Calendar strip ────────────────────────────────────────────
+function updateCalStrip() {
+  const strip    = document.getElementById('cal-strip');
+  if (!strip) return;
+  const logDates = new Set(getLogs().map(l=>l.date));
+  const days     = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+  const today    = new Date();
+  strip.innerHTML='';
+  for (let i=-6;i<=6;i++) {
+    const d=new Date(today); d.setDate(today.getDate()+i);
+    const ds=d.toISOString().slice(0,10);
+    const el=document.createElement('div');
+    el.className='cal-day'+(i===0?' today':'')+(logDates.has(ds)?' has-data':'');
+    el.innerHTML=`<div class="day-name">${days[d.getDay()]}</div><div class="day-num">${d.getDate()}</div>${logDates.has(ds)?'<div class="day-dot"></div>':'<div style="height:9px"></div>'}`;
+    strip.appendChild(el);
+  }
+}
+
+// ── Dashboard ─────────────────────────────────────────────────
+let weightChartInst;
+function renderDashboard() {
+  const p         = getProfile();
+  const logs      = getLogs();
+  const today     = new Date().toISOString().slice(0,10);
+  const todayLog  = logs.find(l=>l.date===today)||{};
+  const calTarget = getKV('calTarget')||p.calGoal||0;
+  const tod       = new Date().getHours();
+  const greet     = tod<12?'morning':tod<17?'afternoon':'evening';
+  document.getElementById('dash-greeting').textContent = `Good ${greet}, ${(p.name||'').split(' ')[0]||'there'} 👋`;
+  document.getElementById('dash-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('d-steps').textContent  = todayLog.steps ? todayLog.steps.toLocaleString() : '—';
+  document.getElementById('d-sleep').textContent  = todayLog.sleep || '—';
+  document.getElementById('d-water').textContent  = todayLog.water || '—';
+  const todayCals = getFoodLog().filter(f=>f.date===today).reduce((s,f)=>s+f.cals,0);
+  document.getElementById('d-cals').textContent    = todayCals||'—';
+  document.getElementById('d-cal-goal').textContent = calTarget ? 'Goal: '+calTarget.toLocaleString() : 'Set in profile';
+  updateCalStrip();
+
+  // Goals progress
+  if (p.weight&&p.targetWeight) {
+    const diff=p.weight-p.targetWeight;
+    const latest=(logs[0]||{}).weight||p.weight;
+    const prog=diff!==0?Math.max(0,Math.min(100,Math.round(((p.weight-latest)/diff)*100))):0;
+    document.getElementById('goals-progress-list').innerHTML=`
+      <div class="mb16">
+        <div style="font-size:14px;font-weight:500">Weight Goal</div>
+        <div class="text-sm">${latest} lbs → ${p.targetWeight} lbs</div>
+        <div class="progress-bar"><div class="progress-fill pf-green" style="width:${prog}%"></div></div>
+        <div style="font-size:12px;color:var(--text2);margin-top:4px">${prog}% complete</div>
+      </div>
+      ${calTarget?`<div>
+        <div style="font-size:14px;font-weight:500">Calories Today</div>
+        <div class="text-sm">${todayCals} / ${calTarget} kcal</div>
+        <div class="progress-bar"><div class="progress-fill pf-orange" style="width:${Math.min(100,Math.round(todayCals/calTarget*100))}%"></div></div>
+      </div>`:''}`;
+  }
+
+  // Weight chart
+  const recent=logs.slice(0,14).filter(l=>l.weight).reverse();
+  if (recent.length>0) {
+    if (weightChartInst) weightChartInst.destroy();
+    weightChartInst = new Chart(document.getElementById('weight-chart'),{
+      type:'line',
+      data:{labels:recent.map(l=>l.date.slice(5)),datasets:[{label:'Weight',data:recent.map(l=>l.weight),borderColor:'#5b8af0',backgroundColor:'rgba(91,138,240,0.1)',fill:true,tension:0.4,pointRadius:4,pointBackgroundColor:'#5b8af0',borderWidth:2}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8b90a8',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#8b90a8',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}}}}
+    });
+  }
+
+  // Workout preview
+  if (p.goal&&WORKOUT_PLANS[p.goal]) {
+    const plan=WORKOUT_PLANS[p.goal];
+    const idx=new Date().getDay()%plan.schedule.length;
+    const day=plan.schedule[idx];
+    document.getElementById('dash-workout-preview').innerHTML=`
+      <div class="tag tag-blue mb8">${day.day}: ${day.type}</div>
+      <div class="text-sm">${day.duration} · ${day.exercises.length} exercises</div>
+      <div style="margin-top:10px">${day.exercises.slice(0,3).map(e=>`<div style="font-size:13px;padding:4px 0;border-bottom:1px solid var(--border)">${e.name} <span style="color:var(--text2)">${e.sets}</span></div>`).join('')}</div>
+      <button class="btn btn-outline btn-sm mt16" onclick="showPage('workouts')">Full plan ↗</button>`;
+  }
+
+  // Meal preview
+  if (calTarget) {
+    const planKey=p.goal==='lose_weight'?'lose_weight':p.goal==='gain_muscle'?'gain_muscle':'maintain';
+    const plan=MEAL_PLANS[planKey];
+    const nowMin=new Date().getHours()*60+new Date().getMinutes();
+    let next=plan.meals[0];
+    for (const m of plan.meals) {
+      const [t,ap]=m.time.split(' '); const [hh,mm]=t.split(':');
+      let mh=+hh+(ap==='PM'&&+hh<12?12:0);
+      if (mh*60+mm>nowMin){next=m;break;}
+    }
+    const mc=Math.round(calTarget*next.pct);
+    document.getElementById('dash-meal-preview').innerHTML=`
+      <div class="meal-time">${next.time}</div>
+      <div class="fw-600 mb8">${next.name}</div>
+      <div class="text-sm" style="line-height:1.6">${next.items.split(',').slice(0,3).join(', ')}...</div>
+      <div style="font-size:14px;font-weight:600;color:var(--accent);margin-top:8px">${mc} kcal</div>
+      <button class="btn btn-outline btn-sm mt16" onclick="showPage('meals')">Full plan ↗</button>`;
+  }
+}
+
+// ── History ───────────────────────────────────────────────────
+let histCharts={};
+function renderHistory() {
+  const logs=getLogs().slice().reverse().slice(-30);
+  if (!logs.length) { document.getElementById('all-logs-list').innerHTML='<p class="text-sm">No logs yet.</p>'; return; }
+  const labels=logs.map(l=>l.date.slice(5));
+  const mkChart=(id,color,label,data)=>{
+    const canvas=document.getElementById(id); if(!canvas)return;
+    if(histCharts[id]){histCharts[id].destroy();}
+    histCharts[id]=new Chart(canvas,{type:'line',data:{labels,datasets:[{label,data,borderColor:color,backgroundColor:color+'20',fill:true,tension:0.4,pointRadius:3,pointBackgroundColor:color,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8b90a8',font:{size:11}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#8b90a8',font:{size:11}},grid:{color:'rgba(255,255,255,0.04)'}}}}});
+  };
+  mkChart('history-weight-chart','#5b8af0','Weight',logs.map(l=>l.weight));
+  mkChart('history-steps-chart','#3ecf8e','Steps',logs.map(l=>l.steps));
+  mkChart('history-sleep-chart','#7c6af5','Sleep',logs.map(l=>l.sleep));
+  const calsByDate={};
+  getFoodLog().forEach(c=>{calsByDate[c.date]=(calsByDate[c.date]||0)+c.cals;});
+  mkChart('history-cal-chart','#f5a623','Calories',logs.map(l=>calsByDate[l.date]||null));
+  document.getElementById('all-logs-list').innerHTML=getLogs().slice(0,20).map(l=>`
+    <div class="log-entry">
+      <div class="log-dot" style="background:var(--accent)"></div>
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:13px">${l.date}</div>
+        <div class="text-sm">${l.weight?'Weight: '+l.weight+'lbs · ':''}${l.steps?'Steps: '+l.steps.toLocaleString()+' · ':''}${l.sleep?'Sleep: '+l.sleep+'h · ':''}${l.workout?'Workout: '+l.workout:''}</div>
+      </div>
+      ${l.mood?`<div class="tag tag-blue">Mood ${l.mood}/10</div>`:''}
+    </div>`).join('');
+}
+
+async function exportData() {
+  const data={profile:getProfile(),logs:getLogs(),foodLog:getFoodLog(),exported:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='baseline-export.json'; a.click();
+  URL.revokeObjectURL(url);
+  toast('Data exported!','success');
+}
+
+// ── Create profile modal ──────────────────────────────────────
+function openCreateModal() {
+  // Build color swatches
+  const grid=document.getElementById('color-grid');
+  grid.innerHTML='';
+  selectedColor=COLORS[0];
+  COLORS.forEach((c,i)=>{
+    const s=document.createElement('div');
+    s.className='color-swatch'+(i===0?' selected':'');
+    s.style.background=c;
+    s.onclick=()=>{
+      document.querySelectorAll('.color-swatch').forEach(x=>x.classList.remove('selected'));
+      s.classList.add('selected'); selectedColor=c;
+    };
+    grid.appendChild(s);
+  });
+  document.getElementById('np-name').value='';
+  document.getElementById('np-pin').value='';
+  document.getElementById('create-profile-modal').classList.add('open');
+}
+function closeCreateModal() { document.getElementById('create-profile-modal').classList.remove('open'); }
+
+async function createProfile() {
+  const name=document.getElementById('np-name').value.trim();
+  if (!name) { toast('Enter a name',''); return; }
+  const pin=document.getElementById('np-pin').value;
+  const data={name,color:selectedColor,pin:pin||''};
+  if (IS_SERVER) {
+    try {
+      const res=await api.post('/api/profiles',data);
+      closeCreateModal();
+      toast('Profile created!','success');
+      await loadProfiles();
+      return;
+    } catch(e){}
+  }
+  // Offline fallback
+  const profiles=cache.get('profiles')||[];
+  const id='p_'+Date.now();
+  profiles.push({id,name,color:selectedColor,goal:'',has_pin:!!pin});
+  cache.set('profiles',profiles);
+  cache.set('profile_'+id,{profile:{},logs:[],food:[],kv:{},name,color:selectedColor});
+  closeCreateModal();
+  toast('Profile created!','success');
+  await loadProfiles();
+}
+
+// ── Toast ─────────────────────────────────────────────────────
+function toast(msg,type) {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='toast show'+(type?' '+type:'');
+  setTimeout(()=>el.classList.remove('show'),2500);
+}
+
+// ── Init ──────────────────────────────────────────────────────
+applyTheme();
+showPicker();
+
+// ── Next Meal Fix ─────────────────────────────────────────────
+// Override the meal preview with correct time-aware logic
+function getNextMeal(meals, calTarget) {
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  // Parse meal time string like "7:00 AM" or "12:30 PM"
+  function parseMealMin(timeStr) {
+    const m = timeStr.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+    if (!m) return 0;
+    let h = parseInt(m[1]), min = parseInt(m[2]);
+    const ap = (m[3]||'').toUpperCase();
+    if (ap === 'PM' && h < 12) h += 12;
+    if (ap === 'AM' && h === 12) h = 0;
+    return h * 60 + min;
+  }
+  // Find first meal that hasn't happened yet today
+  let next = meals[meals.length - 1]; // default to last meal
+  for (const meal of meals) {
+    if (parseMealMin(meal.time) > nowMin) {
+      next = meal;
+      break;
+    }
+  }
+  return next;
+}
+
+// ── Auto Refresh ──────────────────────────────────────────────
+let autoRefreshInterval = null;
+
+function startAutoRefresh() {
+  if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+  // Refresh every 15 minutes when app is open
+  autoRefreshInterval = setInterval(async () => {
+    if (CURRENT_PROFILE_ID && IS_SERVER) {
+      await loadProfileData();
+      const activePage = document.querySelector('.page.active');
+      if (activePage && activePage.id === 'page-dashboard') {
+        renderDashboard();
+      }
+      updateSyncBadge();
+    }
+  }, 15 * 60 * 1000);
+}
+
+function updateSyncBadge() {
+  const badge = document.getElementById('sync-badge');
+  const timeEl = document.getElementById('sync-time');
+  if (!badge || !timeEl) return;
+  badge.style.display = 'flex';
+  const now = new Date();
+  timeEl.textContent = 'Synced ' + now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+}
+
+// ── Workout Routes & Map ──────────────────────────────────────
+let routeMap = null;
+let routeLayer = null;
+let selectedWorkoutId = null;
+
+const TERRAIN_TILES = 'https://stamen-tiles-{s}.a.ssl.fastly.net/terrain/{z}/{x}/{y}.jpg';
+const TERRAIN_ATTR  = 'Map tiles by <a href="http://stamen.com">Stamen Design</a>, ' +
+                      'under <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a>. ' +
+                      'Data by <a href="http://openstreetmap.org">OpenStreetMap</a>.';
+
+function initMap() {
+  if (routeMap) return;
+  const mapEl = document.getElementById('route-map');
+  if (!mapEl) return;
+  routeMap = L.map('route-map', { zoomControl: true, attributionControl: true });
+  L.tileLayer(TERRAIN_TILES, {
+    attribution: TERRAIN_ATTR,
+    subdomains: 'abcd',
+    minZoom: 1, maxZoom: 18
+  }).addTo(routeMap);
+  routeMap.setView([39.5, -98.35], 4); // default US center
+}
+
+function renderRoutesPage() {
+  // Initialize map
+  setTimeout(() => {
+    initMap();
+    if (routeMap) routeMap.invalidateSize();
+  }, 100);
+
+  // Render workout list
+  const workouts = (CURRENT_PROFILE.workouts || [])
+    .sort((a,b) => b.date.localeCompare(a.date));
+
+  const listEl = document.getElementById('route-workout-list');
+  if (!listEl) return;
+
+  if (!workouts.length) {
+    listEl.innerHTML = '<p class="text-sm">No workouts yet. Upload a GPX file or set up Health Auto Export.</p>';
+    return;
+  }
+
+  const typeEmoji = {Run:'🏃',Walk:'🚶',Hike:'⛰️',Cycling:'🚴',Swimming:'🏊',Other:'💪'};
+  listEl.innerHTML = workouts.slice(0,20).map(w => {
+    const emoji = typeEmoji[w.type] || '💪';
+    const distMi = w.distance ? (w.distanceUnit === 'km' ? (w.distance*0.621371).toFixed(2) : parseFloat(w.distance).toFixed(2)) : null;
+    const durMin = w.duration ? Math.round(w.duration) : null;
+    return `<div class="workout-route-card ${w.id===selectedWorkoutId?'selected':''}" onclick="selectWorkout('${w.id}')">
+      <div class="flex-between">
+        <div class="flex-center">
+          <span style="font-size:20px">${emoji}</span>
+          <div>
+            <div style="font-weight:600;font-size:14px">${w.type}</div>
+            <div class="text-sm">${w.date}${w.has_route||w.gpx_id?' · 🗺️ Route':''}</div>
+          </div>
+        </div>
+        <div style="text-align:right">
+          ${distMi?'<div style="font-weight:600">'+distMi+' mi</div>':''}
+          ${durMin?'<div class="text-sm">'+durMin+' min</div>':''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function selectWorkout(wid) {
+  selectedWorkoutId = wid;
+  renderRoutesPage();
+
+  const workouts = CURRENT_PROFILE.workouts || [];
+  const w = workouts.find(x => x.id === wid);
+  if (!w) return;
+
+  // Update stats
+  document.getElementById('map-workout-title').textContent = w.type + ' — ' + w.date;
+  document.getElementById('route-stats-row').style.display = 'grid';
+
+  const distMi = w.distance ? (w.distanceUnit === 'km' ? (w.distance*0.621371).toFixed(2) : parseFloat(w.distance).toFixed(2)) : '—';
+  const durMin = w.duration ? Math.round(w.duration) + ' min' : '—';
+
+  let pace = '—';
+  if (w.distance && w.duration) {
+    const miles = w.distanceUnit === 'km' ? w.distance * 0.621371 : w.distance;
+    const paceMin = w.duration / miles;
+    const pm = Math.floor(paceMin);
+    const ps = Math.round((paceMin - pm) * 60);
+    pace = `${pm}:${ps.toString().padStart(2,'0')}`;
+  }
+
+  document.getElementById('rs-distance').textContent = distMi;
+  document.getElementById('rs-duration').textContent = durMin;
+  document.getElementById('rs-pace').textContent = pace + (pace !== '—' ? '/mi' : '');
+  document.getElementById('rs-hr').textContent = w.avgHR ? Math.round(w.avgHR) + ' bpm' : '—';
+
+  // Load GPX if available
+  if (w.gpx_id && IS_SERVER) {
+    try {
+      const res = await fetch(`/api/profiles/${CURRENT_PROFILE_ID}/gpx/${w.gpx_id}`);
+      if (res.ok) {
+        const gpxText = await res.text();
+        renderGPXOnMap(gpxText);
+      }
+    } catch(e) { console.error('GPX load error:', e); }
+  } else if (!w.gpx_id) {
+    // No route data — just show a placeholder on map
+    if (routeMap) {
+      if (routeLayer) { routeMap.removeLayer(routeLayer); routeLayer = null; }
+      routeMap.setView([39.5, -98.35], 4);
+    }
+    toast('No GPS route data for this workout', '');
+  }
+}
+
+function renderGPXOnMap(gpxText) {
+  if (!routeMap) initMap();
+  if (routeLayer) { routeMap.removeLayer(routeLayer); routeLayer = null; }
+
+  // Parse GPX XML
+  const parser = new DOMParser();
+  const gpxDoc = parser.parseFromString(gpxText, 'application/xml');
+  const trkpts = gpxDoc.querySelectorAll('trkpt');
+
+  if (!trkpts.length) {
+    toast('No track points found in GPX', '');
+    return;
+  }
+
+  const latlngs = [];
+  trkpts.forEach(pt => {
+    const lat = parseFloat(pt.getAttribute('lat'));
+    const lon = parseFloat(pt.getAttribute('lon'));
+    if (!isNaN(lat) && !isNaN(lon)) latlngs.push([lat, lon]);
+  });
+
+  if (!latlngs.length) return;
+
+  // Draw route line in accent blue
+  routeLayer = L.layerGroup();
+
+  const polyline = L.polyline(latlngs, {
+    color: '#5b8af0',
+    weight: 4,
+    opacity: 0.85,
+    lineJoin: 'round',
+    lineCap: 'round'
+  }).addTo(routeLayer);
+
+  // Start marker (green)
+  L.circleMarker(latlngs[0], {
+    radius: 8, fillColor: '#3ecf8e', color: 'white',
+    weight: 2, opacity: 1, fillOpacity: 1
+  }).bindPopup('Start').addTo(routeLayer);
+
+  // End marker (red)
+  L.circleMarker(latlngs[latlngs.length-1], {
+    radius: 8, fillColor: '#e55353', color: 'white',
+    weight: 2, opacity: 1, fillOpacity: 1
+  }).bindPopup('Finish').addTo(routeLayer);
+
+  routeLayer.addTo(routeMap);
+  routeMap.fitBounds(polyline.getBounds(), { padding: [20, 20] });
+}
+
+async function uploadGPX(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (!IS_SERVER) { toast('GPX upload requires the Pi server', ''); return; }
+
+  const workoutType = document.getElementById('gpx-workout-type').value;
+  const today = new Date().toISOString().slice(0,10);
+
+  try {
+    // Upload GPX file
+    const gpxRes = await fetch(`/api/profiles/${CURRENT_PROFILE_ID}/gpx`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/gpx+xml'},
+      body: await file.text()
+    });
+    const gpxData = await gpxRes.json();
+    if (!gpxData.ok) { toast('Upload failed', ''); return; }
+
+    // Parse GPX for basic stats
+    const gpxText = await file.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(gpxText, 'application/xml');
+    const trkpts = doc.querySelectorAll('trkpt');
+    let distance = 0;
+    const pts = Array.from(trkpts);
+    for (let i=1; i<pts.length; i++) {
+      const a = [parseFloat(pts[i-1].getAttribute('lat')), parseFloat(pts[i-1].getAttribute('lon'))];
+      const b = [parseFloat(pts[i].getAttribute('lat')), parseFloat(pts[i].getAttribute('lon'))];
+      distance += haversineKm(a, b);
+    }
+
+    // Get time from GPX metadata
+    const timeEl = doc.querySelector('trkpt time');
+    const workoutDate = timeEl ? timeEl.textContent.slice(0,10) : today;
+
+    // Save workout entry
+    const workout = {
+      type: workoutType, date: workoutDate,
+      distance: Math.round(distance * 100) / 100,
+      distanceUnit: 'km',
+      duration: 0, // can't easily determine without timestamps
+      gpx_id: gpxData.gpx_id,
+      has_route: true,
+      source: 'manual_upload'
+    };
+
+    await api.post(`/api/profiles/${CURRENT_PROFILE_ID}/workouts`, workout);
+
+    // Update local profile
+    if (!CURRENT_PROFILE.workouts) CURRENT_PROFILE.workouts = [];
+    workout.id = 'w_' + Date.now();
+    CURRENT_PROFILE.workouts.unshift(workout);
+
+    toast('GPX uploaded!', 'success');
+    renderRoutesPage();
+    input.value = '';
+  } catch(e) {
+    console.error(e);
+    toast('Upload error', '');
+  }
+}
+
+function haversineKm(a, b) {
+  const R = 6371;
+  const dLat = (b[0]-a[0]) * Math.PI/180;
+  const dLon = (b[1]-a[1]) * Math.PI/180;
+  const x = Math.sin(dLat/2)**2 + Math.cos(a[0]*Math.PI/180)*Math.cos(b[0]*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
+}
+
+// Patch renderDashboard to use fixed next meal logic
+const _origRenderDash = renderDashboard;
+renderDashboard = function() {
+  _origRenderDash();
+  // Fix next meal after original render
+  const p = getProfile();
+  const calTarget = getKV('calTarget') || p.calGoal || 0;
+  if (calTarget) {
+    const planKey = p.goal==='lose_weight'?'lose_weight':p.goal==='gain_muscle'?'gain_muscle':'maintain';
+    const plan = MEAL_PLANS[planKey];
+    if (plan) {
+      const next = getNextMeal(plan.meals, calTarget);
+      const mc = Math.round(calTarget * next.pct);
+      const el = document.getElementById('dash-meal-preview');
+      if (el) {
+        el.innerHTML = `<div class="meal-time">${next.time}</div>
+          <div class="fw-600 mb8">${next.name}</div>
+          <div class="text-sm" style="line-height:1.6">${next.items.split(',').slice(0,3).join(', ')}...</div>
+          <div style="font-size:14px;font-weight:600;color:var(--accent);margin-top:8px">${mc} kcal</div>
+          <button class="btn btn-outline btn-sm mt16" onclick="showPage('meals')">Full plan ↗</button>`;
+      }
+    }
+  }
+  updateSyncBadge();
+};
+
+// Patch enterApp to start auto refresh
+const _origEnterApp = enterApp;
+enterApp = async function(profileId) {
+  await _origEnterApp(profileId);
+  startAutoRefresh();
+};
+</script>
+</body>
+</html>

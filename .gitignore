@@ -1,0 +1,17 @@
+# Never commit health data
+data/
+*.json.tmp
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/

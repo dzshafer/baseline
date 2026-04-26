@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  baseline:
+    build: .
+    container_name: baseline
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mounts your local ./data folder into the container
+      # so your database persists across container restarts/updates
+      - ./data:/app/data
+    environment:
+      - PORT=3000
