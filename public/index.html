@@ -322,6 +322,7 @@ select option { background: var(--bg3); }
 .cal-day:hover { border-color: var(--accent); }
 .cal-day.today { background: linear-gradient(135deg,rgba(91,138,240,0.2),rgba(124,106,245,0.15)); border-color: var(--accent); }
 .cal-day.has-data { border-color: var(--green); }
+.cal-day.selected-day { background: var(--bg4); border-color: var(--accent); }
 .cal-day .day-name { font-size: 10px; color: var(--text2); }
 .cal-day .day-num { font-size: 16px; font-weight: 700; margin-top: 2px; }
 .cal-day .day-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); margin: 4px auto 0; }
@@ -1535,6 +1536,9 @@ function parseImport() {
 }
 
 // ── Calendar strip ────────────────────────────────────────────
+// Currently selected date on dashboard (defaults to today)
+let dashSelectedDate = new Date().toISOString().slice(0,10);
+
 function updateCalStrip() {
   const strip    = document.getElementById('cal-strip');
   if (!strip) return;
@@ -1546,9 +1550,64 @@ function updateCalStrip() {
     const d=new Date(today); d.setDate(today.getDate()+i);
     const ds=d.toISOString().slice(0,10);
     const el=document.createElement('div');
-    el.className='cal-day'+(i===0?' today':'')+(logDates.has(ds)?' has-data':'');
+    const isToday   = i===0;
+    const isSelected = ds===dashSelectedDate;
+    el.className='cal-day'+(isToday?' today':'')+(logDates.has(ds)?' has-data':'')+(isSelected&&!isToday?' selected-day':'');
+    el.style.cursor='pointer';
     el.innerHTML=`<div class="day-name">${days[d.getDay()]}</div><div class="day-num">${d.getDate()}</div>${logDates.has(ds)?'<div class="day-dot"></div>':'<div style="height:9px"></div>'}`;
+    el.onclick = () => selectDashDay(ds);
     strip.appendChild(el);
+  }
+}
+
+function selectDashDay(dateStr) {
+  dashSelectedDate = dateStr;
+  updateCalStrip();
+  renderDashboardForDate(dateStr);
+}
+
+function renderDashboardForDate(dateStr) {
+  const p         = getProfile();
+  const logs      = getLogs();
+  const calTarget = getKV('calTarget')||p.calGoal||0;
+  const dayLog    = logs.find(l=>l.date===dateStr)||{};
+  const isToday   = dateStr===new Date().toISOString().slice(0,10);
+
+  // Update date display
+  const d = new Date(dateStr+'T12:00:00');
+  document.getElementById('dash-date').textContent = d.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) + (isToday?' (Today)':'');
+
+  // Update stat tiles
+  document.getElementById('d-steps').textContent  = dayLog.steps ? dayLog.steps.toLocaleString() : '—';
+  document.getElementById('d-sleep').textContent  = dayLog.sleep || '—';
+  document.getElementById('d-water').textContent  = dayLog.water || '—';
+  const dayCals = getFoodLog().filter(f=>f.date===dateStr).reduce((s,f)=>s+f.cals,0);
+  document.getElementById('d-cals').textContent   = dayCals||'—';
+  document.getElementById('d-cal-goal').textContent = calTarget ? 'Goal: '+calTarget.toLocaleString() : 'Set in profile';
+
+  // Update calorie progress bar if visible
+  const progEl = document.getElementById('goals-progress-list');
+  if (progEl && calTarget && p.weight && p.targetWeight) {
+    const diff=p.weight-p.targetWeight;
+    const latest=(logs[0]||{}).weight||p.weight;
+    const prog=diff!==0?Math.max(0,Math.min(100,Math.round(((p.weight-latest)/diff)*100))):0;
+    progEl.innerHTML=`
+      <div class="mb16">
+        <div style="font-size:14px;font-weight:500">Weight Goal</div>
+        <div class="text-sm">${latest} lbs → ${p.targetWeight} lbs</div>
+        <div class="progress-bar"><div class="progress-fill pf-green" style="width:${prog}%"></div></div>
+        <div style="font-size:12px;color:var(--text2);margin-top:4px">${prog}% complete</div>
+      </div>
+      ${calTarget?`<div>
+        <div style="font-size:14px;font-weight:500">Calories — ${isToday?'Today':d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>
+        <div class="text-sm">${dayCals} / ${calTarget} kcal</div>
+        <div class="progress-bar"><div class="progress-fill pf-orange" style="width:${Math.min(100,Math.round(dayCals/calTarget*100))}%"></div></div>
+      </div>`:''}
+      ${dayLog.hr?`<div class="mt16"><div style="font-size:14px;font-weight:500">Resting HR</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--pink)">${dayLog.hr} <span style="font-size:13px;color:var(--text2)">bpm</span></div></div>`:''}
+      ${dayLog.sleep?`<div class="mt16"><div style="font-size:14px;font-weight:500">Sleep</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--accent)">${dayLog.sleep} <span style="font-size:13px;color:var(--text2)">hrs</span></div></div>`:''}
+      ${dayLog.mood?`<div class="mt16"><div style="font-size:14px;font-weight:500">Mood</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:var(--green)">${dayLog.mood}<span style="font-size:13px;color:var(--text2)">/10</span></div></div>`:''}
+      ${dayLog.notes?`<div class="mt16"><div style="font-size:14px;font-weight:500">Notes</div><div class="text-sm" style="margin-top:4px;line-height:1.6">${dayLog.notes}</div></div>`:''}
+    `;
   }
 }
 
@@ -1556,21 +1615,15 @@ function updateCalStrip() {
 let weightChartInst;
 function renderDashboard() {
   const p         = getProfile();
-  const logs      = getLogs();
-  const today     = new Date().toISOString().slice(0,10);
-  const todayLog  = logs.find(l=>l.date===today)||{};
-  const calTarget = getKV('calTarget')||p.calGoal||0;
   const tod       = new Date().getHours();
   const greet     = tod<12?'morning':tod<17?'afternoon':'evening';
   document.getElementById('dash-greeting').textContent = `Good ${greet}, ${(p.name||'').split(' ')[0]||'there'} 👋`;
-  document.getElementById('dash-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-  document.getElementById('d-steps').textContent  = todayLog.steps ? todayLog.steps.toLocaleString() : '—';
-  document.getElementById('d-sleep').textContent  = todayLog.sleep || '—';
-  document.getElementById('d-water').textContent  = todayLog.water || '—';
-  const todayCals = getFoodLog().filter(f=>f.date===today).reduce((s,f)=>s+f.cals,0);
-  document.getElementById('d-cals').textContent    = todayCals||'—';
-  document.getElementById('d-cal-goal').textContent = calTarget ? 'Goal: '+calTarget.toLocaleString() : 'Set in profile';
+  // Reset to today when dashboard loads
+  dashSelectedDate = new Date().toISOString().slice(0,10);
   updateCalStrip();
+  renderDashboardForDate(dashSelectedDate);
+  const calTarget = getKV('calTarget')||p.calGoal||0;
+  document.getElementById('d-cal-goal').textContent = calTarget ? 'Goal: '+calTarget.toLocaleString() : 'Set in profile';
 
   // Goals progress
   if (p.weight&&p.targetWeight) {
