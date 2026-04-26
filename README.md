@@ -229,7 +229,7 @@ sudo journalctl -u baseline -f    # Live logs
 
 ## AI Involvement
 
-AI assistance (Claude by Anthropic) was used extensively in development for code generation, architecture, and debugging. All feature decisions, testing, deployment, and hardware setup were human-directed and reviewed. The codebase is fully open for inspection.
+AI assistance was used extensively in development. All feature decisions, testing, deployment, and hardware setup were human-directed and reviewed. The codebase is fully open for inspection.
 
 ---
 
